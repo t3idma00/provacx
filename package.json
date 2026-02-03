@@ -5,6 +5,7 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build": "turbo build",
+    "vercel-build": "turbo build --filter=@provacx/web",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
