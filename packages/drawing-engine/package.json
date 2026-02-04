@@ -8,6 +8,22 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "default": "./src/types/index.ts"
+    },
+    "./store": {
+      "types": "./src/store/index.ts",
+      "default": "./src/store/index.ts"
+    },
+    "./utils": {
+      "types": "./src/utils/index.ts",
+      "default": "./src/utils/index.ts"
+    },
+    "./components": {
+      "types": "./src/components/index.ts",
+      "default": "./src/components/index.ts"
     }
   },
   "scripts": {
@@ -15,12 +31,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "konva": "^9.3.6",
-    "react-konva": "^18.2.10",
-    "zustand": "^4.5.2",
-    "immer": "^10.0.4",
-    "nanoid": "^5.0.7",
-    "@provacx/shared": "workspace:*"
+    "@provacx/shared": "workspace:*",
+    "fabric": "^6.0.0",
+    "konva": "^10.2.0",
+    "lucide-react": "^0.378.0",
+    "react-konva": "^19.2.1",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@provacx/eslint-config": "workspace:*",

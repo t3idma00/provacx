@@ -7,7 +7,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 
 import { trpc } from "@/lib/trpc";
 
@@ -52,17 +51,14 @@ export default function RegisterPage() {
         return;
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(data.password, 10);
-
-      // Create user via API
+      // Create user via API (password hashed on server)
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: data.name,
           email: data.email,
-          password: hashedPassword,
+          password: data.password,
         }),
       });
 

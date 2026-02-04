@@ -1,47 +1,115 @@
-// Types
-export * from "./types";
+/**
+ * @provacx/smart-drawing
+ * 
+ * Professional HVAC CAD drawing package for ProvacX.
+ * Provides a complete drawing editor with Fabric.js canvas,
+ * HVAC symbol library, and industry-standard CAD tools.
+ */
+
+// Main Editor Component
+export { SmartDrawingEditor, type SmartDrawingEditorProps } from './SmartDrawingEditor';
+
+// Individual Components
+export {
+  DrawingCanvas,
+  Toolbar,
+  PropertiesPanel,
+  SymbolPalette,
+  LayersPanel,
+  DrawingGrid,
+  DrawingRulers,
+  DrawingPageLayout,
+  ZoomIndicator,
+  CoordinatesDisplay,
+  type DrawingCanvasProps,
+  type ToolbarProps,
+  type PropertiesPanelProps,
+  type SymbolPaletteProps,
+  type LayersPanelProps,
+  type DrawingGridProps,
+  type DrawingRulersProps,
+  type DrawingPageLayoutProps,
+} from './components';
 
 // Store
-export {
-  useCanvasStore,
-  useActiveView,
-  useActiveTool,
-  useSettings,
-  useSelectedIds,
-  useIsDirty,
-  useComponents,
-  useConnections,
-  useLayers,
-  useCurrentViewState,
-  useCutLines,
-  useDetailAreas,
-} from "./store/canvasStore";
+export { useSmartDrawingStore, type SmartDrawingState } from './store';
 
-// Components
-export {
-  HVACCanvas,
-  Grid,
-  ComponentRenderer,
-  ConnectionLine,
-  SelectionBox,
-  ViewRibbon,
-  DuctSection,
-  Elbow,
-  Tee,
-  Reducer,
-  Diffuser,
-  Grille,
-  AHU,
-  Damper,
-} from "./components";
+// Types
+export type {
+  Point2D,
+  Bounds,
+  SplineType,
+  SplineSettings,
+  DrawingTool,
+  Wall2D,
+  Room2D,
+  Sketch2D,
+  IndoorUnit2D,
+  OutdoorUnit2D,
+  DuctSegment2D,
+  RefrigerantLine2D,
+  DrainLine2D,
+  ControlWiring2D,
+  HVACLayout2D,
+  BoqSummary,
+  PageConfig,
+  DrawingLayer,
+  HistoryEntry,
+} from './types';
 
-// Views
-export { SectionalElevation, DetailView } from "./views";
-
-// Hooks
+// Utilities
 export {
-  useKeyboardShortcuts,
-  KEYBOARD_SHORTCUTS,
-  useAutoSave,
-  useSnapping,
-} from "./hooks";
+  // Geometry
+  generateId,
+  clamp,
+  roundToNearest,
+  roundValue,
+  lerp,
+  lerpPoint,
+  distance,
+  distanceSquared,
+  midpoint,
+  angleBetween,
+  normalOffset,
+  rotatePoint,
+  calculatePolygonArea,
+  calculateCentroid,
+  polygonBounds,
+  isPointInPolygon,
+  distancePointToSegment,
+  segmentsIntersect,
+  lineIntersection,
+  polylineLength,
+  projectPointToPolyline,
+  simplifyPolyline,
+  findNearestWall,
+  mergeBounds,
+  expandBounds,
+  buildArcPath,
+  buildRevisionCloudPath,
+  sampleCatmullRom,
+  countBy,
+  // Splines
+  DEFAULT_SPLINE_SETTINGS,
+  buildSplinePath,
+  getSplineTypes,
+  interpolateSpline,
+  // Duct Planning
+  buildDuctDefaults,
+  buildBranchRoute,
+  buildDuctPlan,
+  generateBoqSummary,
+  type DuctDefaults,
+} from './utils';
+
+// Symbol Library
+export {
+  SYMBOL_LIBRARY,
+  SYMBOL_CATEGORIES,
+  getSymbolById,
+  getSymbolsByCategory,
+  searchSymbols,
+  getCategoryLabel,
+  type SymbolDefinition,
+  type SymbolCategory,
+} from './data';

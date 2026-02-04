@@ -7,6 +7,22 @@
 // BASE TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
+export type ComponentType =
+  | "DUCT"
+  | "FITTING"
+  | "TERMINAL"
+  | "EQUIPMENT"
+  | "DAMPER"
+  | "ACCESSORY";
+
+export type ConnectionType =
+  | "DUCT_TO_DUCT"
+  | "DUCT_TO_FITTING"
+  | "FITTING_TO_FITTING"
+  | "DUCT_TO_TERMINAL"
+  | "DUCT_TO_EQUIPMENT"
+  | "REFRIGERANT";
+
 export interface Position {
   x: number;
   y: number;

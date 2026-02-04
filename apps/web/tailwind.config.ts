@@ -7,6 +7,11 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
+    // Include workspace packages that use Tailwind classes
+    "../../packages/drawing-engine/src/**/*.{js,ts,jsx,tsx}",
+    "../../packages/boq-engine/src/**/*.{js,ts,jsx,tsx}",
+    "../../packages/document-editor/src/**/*.{js,ts,jsx,tsx}",
+    "../../packages/ui/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {

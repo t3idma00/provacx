@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@provacx/database";
@@ -18,12 +19,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Hash password on server
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create user
     const user = await prisma.user.create({
       data: {
         name,
         email,
-        password, // Already hashed from client
+        password: hashedPassword,
       },
     });
 

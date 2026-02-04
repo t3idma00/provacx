@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { trpc } from "@/lib/trpc";
+import { useOrganization } from "@/lib/organization-context";
 
 export default function DashboardPage() {
   const { data: organizations, isLoading } = trpc.user.getOrganizations.useQuery();
+  const { organizationId, setOrganizationId } = useOrganization();
+
+  // Auto-select first organization if none selected
+  useEffect(() => {
+    if (organizations?.length && !organizationId) {
+      setOrganizationId(organizations[0].id);
+    }
+  }, [organizations, organizationId, setOrganizationId]);
 
   if (isLoading) {
     return (

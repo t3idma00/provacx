@@ -7,6 +7,7 @@ import { httpBatchLink, loggerLink } from "@trpc/client";
 import superjson from "superjson";
 
 import type { AppRouter } from "@provacx/api";
+import { getOrganizationId } from "./organization-context";
 
 /**
  * Create tRPC React hooks
@@ -53,6 +54,12 @@ export function createTRPCClient(headers?: Headers) {
             headers.forEach((value, key) => {
               heads.set(key, value);
             });
+          }
+
+          // Add organization ID header
+          const orgId = getOrganizationId();
+          if (orgId) {
+            heads.set("x-organization-id", orgId);
           }
 
           return Object.fromEntries(heads);

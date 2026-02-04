@@ -74,3 +74,78 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  /* Base scrollbar - always visible when content overflows */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 5px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 5px;
+    border: 2px solid #f3f4f6;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+  
+  /* Amber scrollbar theme - for drawing editor */
+  .scrollbar-thin.scrollbar-thumb-amber-300 {
+    scrollbar-color: #fcd34d #fef3c7;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-amber-300::-webkit-scrollbar-track {
+    background: #fef3c7;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-amber-300::-webkit-scrollbar-thumb {
+    background: #fcd34d;
+    border: 2px solid #fef3c7;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-amber-300::-webkit-scrollbar-thumb:hover {
+    background: #f59e0b;
+  }
+  
+  /* Gray scrollbar theme - for BOQ/Document editor */
+  .scrollbar-thin.scrollbar-thumb-gray-300 {
+    scrollbar-color: #d1d5db #f3f4f6;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-gray-300::-webkit-scrollbar-track {
+    background: #f3f4f6;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border: 2px solid #f3f4f6;
+  }
+  
+  .scrollbar-thin.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

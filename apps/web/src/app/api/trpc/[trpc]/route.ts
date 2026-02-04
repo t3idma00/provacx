@@ -10,6 +10,9 @@ import { auth } from "@/lib/auth";
 const handler = async (req: Request) => {
   const session = await auth();
 
+  // Get organization ID from header
+  const organizationId = req.headers.get("x-organization-id") ?? undefined;
+
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
@@ -27,6 +30,7 @@ const handler = async (req: Request) => {
               expires: session.expires,
             }
           : null,
+        organizationId,
         headers: new Headers(req.headers),
       }),
     onError:

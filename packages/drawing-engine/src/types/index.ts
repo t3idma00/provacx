@@ -1,467 +1,469 @@
-import type {
-  ComponentType,
-  DuctShape,
-  ConnectionType,
-  Position,
-  Dimensions,
-} from "@provacx/shared";
+/**
+ * Smart Drawing Types
+ * 
+ * Core type definitions for the HVAC Smart Drawing system.
+ * Follows industrial CAD standards with proper separation of concerns.
+ */
 
-// ============================================================================
-// Core Canvas Types
-// ============================================================================
+// =============================================================================
+// Geometry Types
+// =============================================================================
 
-export type ViewType = "plan" | "section" | "end" | "detail";
-
-export interface ViewState {
-  activeView: ViewType;
-  zoom: number;
-  panX: number;
-  panY: number;
-}
-
-export interface CanvasSettings {
-  gridSize: number;
-  snapToGrid: boolean;
-  showGrid: boolean;
-  showDimensions: boolean;
-  showLabels: boolean;
-  unit: "mm" | "m" | "ft" | "in";
-}
-
-// ============================================================================
-// Drawing Component Types
-// ============================================================================
-
-export interface BaseComponent {
-  id: string;
-  type: ComponentType;
-  name: string;
-  // Position in all dimensions (3D-aware for multi-view)
+export interface Point2D {
   x: number;
   y: number;
-  z: number; // Height/elevation
-  elevation: number; // Height from floor
+}
+
+export interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
+
+export interface Transform2D {
+  position: Point2D;
   rotation: number;
-  // Layer information
-  layerId: string;
-  locked: boolean;
-  visible: boolean;
-  selected: boolean;
-  // Timestamps
-  createdAt: Date;
-  updatedAt: Date;
+  scale: number;
 }
 
-export interface DuctComponent extends BaseComponent {
-  type: "DUCT";
-  ductType: "rectangular" | "round" | "oval" | "flexible";
-  shape: DuctShape;
-  // Dimensions
-  width: number;
-  height: number;
-  diameter?: number;
-  length: number;
-  // Construction
-  material: string;
-  gauge: number;
-  jointType: string;
-  seamType?: string;
-  // Insulation
-  hasInsulation: boolean;
-  insulationType?: string;
-  insulationThickness?: number;
-  // Connection points
-  startConnection?: string;
-  endConnection?: string;
+// =============================================================================
+// Spline Types (AutoCAD-like)
+// =============================================================================
+
+export type SplineType = 'catmullRom' | 'bezier' | 'bspline' | 'nurbs';
+export type SplineMethod = 'catmull-rom' | 'bezier' | 'b-spline' | 'nurbs';
+export type SplineFitMethod = 'fit-points' | 'control-vertices';
+export type KnotParameterization = 'uniform' | 'chord' | 'centripetal' | 'custom';
+
+export interface SplineSettings {
+  type?: SplineType;
+  method: SplineMethod;
+  fitMethod: SplineFitMethod;
+  tension: number;
+  continuity: number;
+  bias: number;
+  closed: boolean;
+  degree: number;
+  fitTolerance: number;
+  knotParameterization: KnotParameterization;
+  weights?: number[];
+  samplesPerSegment?: number;
+  showControlPoints: boolean;
+  showControlPolygon: boolean;
+  showFitPoints: boolean;
+  showTangentHandles: boolean;
 }
 
-export interface FittingComponent extends BaseComponent {
-  type: "FITTING";
-  fittingType:
-    | "elbow"
-    | "tee"
-    | "wye"
-    | "reducer"
-    | "transition"
-    | "offset"
-    | "endcap";
-  // Dimensions (varies by fitting type)
-  width?: number;
-  height?: number;
-  diameter?: number;
-  angle?: number;
-  radiusRatio?: number;
-  // For reducers/transitions
-  inletWidth?: number;
-  inletHeight?: number;
-  inletDiameter?: number;
-  outletWidth?: number;
-  outletHeight?: number;
-  outletDiameter?: number;
-  // Construction
-  material: string;
-  gauge: number;
-  // Elbow specific
-  turningVanes?: boolean;
-  vaneCount?: number;
-  // Connection points
-  connections: string[];
-}
-
-export interface TerminalComponent extends BaseComponent {
-  type: "TERMINAL";
-  terminalType: "diffuser" | "grille" | "register";
-  // Dimensions
-  faceWidth: number;
-  faceHeight: number;
-  neckSize: number;
-  // Performance
-  airflow?: number;
-  throwDistance?: number;
-  noiseLevel?: number;
-  // Configuration
-  pattern?: string;
-  damperType?: string;
-  hasFilter?: boolean;
-  filterType?: string;
-  // Connection
-  connectionId?: string;
-}
-
-export interface EquipmentComponent extends BaseComponent {
-  type: "EQUIPMENT";
-  equipmentType: "ahu" | "fcu" | "vrf_outdoor" | "vrf_indoor" | "fan" | "pump";
-  model?: string;
-  manufacturer?: string;
-  // Capacity
-  coolingCapacity?: number;
-  heatingCapacity?: number;
-  airflow?: number;
-  staticPressure?: number;
-  // Physical
-  physicalWidth: number;
-  physicalHeight: number;
-  physicalDepth: number;
+export interface SplineControlPoint {
+  position: Point2D;
+  tangentIn?: Point2D;
+  tangentOut?: Point2D;
   weight?: number;
-  // Electrical
-  powerConsumption?: number;
-  voltage?: number;
-  // Connections
-  supplyConnection?: string;
-  returnConnection?: string;
-  refrigerantConnections?: string[];
+  isCorner?: boolean;
 }
 
-export interface DamperComponent extends BaseComponent {
-  type: "DAMPER";
-  damperType: "volume" | "fire" | "smoke" | "backdraft";
-  // Dimensions
-  width: number;
-  height: number;
-  // Configuration
-  bladeType?: string;
-  actuatorType?: string;
-  fireRating?: string;
-  leakageClass?: string;
-  // Connection
-  connectionId?: string;
-}
+// =============================================================================
+// Drawing Elements
+// =============================================================================
 
-export interface AccessoryComponent extends BaseComponent {
-  type: "ACCESSORY";
-  accessoryType: "access_door" | "flex_connector" | "test_hole" | "silencer";
-  // Dimensions
-  width: number;
-  height: number;
-  length?: number;
-  // Configuration
-  insulated?: boolean;
-  material?: string;
-  // Connection
-  connectionId?: string;
-}
+export type WallType = 'exterior' | 'interior' | 'partition';
+export type OpeningType = 'window' | 'door';
+export type SketchType = 
+  | 'line' 
+  | 'construction-line' 
+  | 'polyline' 
+  | 'polygon' 
+  | 'rectangle' 
+  | 'circle' 
+  | 'ellipse' 
+  | 'arc' 
+  | 'spline' 
+  | 'revision-cloud'
+  | 'freehand'
+  | 'pencil';
 
-// Union type for all components
-export type HVACComponent =
-  | DuctComponent
-  | FittingComponent
-  | TerminalComponent
-  | EquipmentComponent
-  | DamperComponent
-  | AccessoryComponent;
+export type DrawingTool =
+  | 'select'
+  | 'pan'
+  | 'wall'
+  | 'wall-line'
+  | 'wall-rectangle'
+  | 'wall-polyline'
+  | 'wall-arc'
+  | 'window'
+  | 'door'
+  | 'room'
+  | 'dimension'
+  | 'text'
+  | 'eraser'
+  | 'calibrate'
+  | 'line'
+  | 'construction-line'
+  | 'polyline'
+  | 'polygon'
+  | 'rectangle'
+  | 'circle'
+  | 'ellipse'
+  | 'arc'
+  | 'spline'
+  | 'revision-cloud'
+  | 'pencil';
 
-// ============================================================================
-// Connection Types
-// ============================================================================
-
-export interface Connection {
+export interface Wall2D {
   id: string;
-  sourceId: string;
-  sourcePort: string;
-  targetId: string;
-  targetPort: string;
-  connectionType: ConnectionType;
-  // Visual properties
-  points: number[];
-  strokeColor: string;
-  strokeWidth: number;
+  start: Point2D;
+  end: Point2D;
+  thickness: number;
+  height: number;
+  wallType: WallType;
+  material?: string;
+  color?: string;
+  openings: Opening2D[];
 }
 
-// ============================================================================
-// Layer Types
-// ============================================================================
+export interface Opening2D {
+  id: string;
+  wallId: string;
+  type: OpeningType;
+  position: number;
+  width: number;
+  height: number;
+  sillHeight: number;
+  material?: string;
+}
 
-export interface Layer {
+export interface Room2D {
+  id: string;
+  name: string;
+  vertices: Point2D[];
+  area: number;
+  spaceType: string;
+  floorHeight: number;
+  ceilingHeight: number;
+  color?: string;
+}
+
+export interface Dimension2D {
+  id: string;
+  type: 'linear' | 'aligned' | 'angular' | 'radius' | 'diameter' | 'area';
+  points: Point2D[];
+  value: number;
+  unit: 'mm' | 'cm' | 'm' | 'in' | 'ft';
+  text?: string;
+  textPosition: Point2D;
+  visible: boolean;
+}
+
+export interface Annotation2D {
+  id: string;
+  type: 'text' | 'leader' | 'callout';
+  position: Point2D;
+  text: string;
+  leaderPoints?: Point2D[];
+  visible: boolean;
+}
+
+export interface Sketch2D {
+  id: string;
+  type: SketchType;
+  points: Point2D[];
+  closed?: boolean;
+  radius?: number;
+  rx?: number;
+  ry?: number;
+  strokeWidth?: number;
+  splineSettings?: SplineSettings;
+  controlPoints?: SplineControlPoint[];
+  knotVector?: number[];
+}
+
+export interface Guide {
+  id: string;
+  type: 'horizontal' | 'vertical';
+  offset: number;
+}
+
+// =============================================================================
+// Symbol Types
+// =============================================================================
+
+export interface Symbol {
+  id: string;
+  name: string;
+  category: string;
+  icon: React.ReactNode;
+  svgPath?: string;
+  viewBox?: { width: number; height: number };
+  defaultWidth: number;
+  defaultHeight: number;
+  tags: string[];
+  favorite?: boolean;
+}
+
+export interface SymbolCategory {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  symbols: Symbol[];
+}
+
+export interface SymbolInstance2D {
+  id: string;
+  symbolId: string;
+  position: Point2D;
+  rotation: number;
+  scale: number;
+  flipped: boolean;
+  properties: Record<string, unknown>;
+}
+
+// =============================================================================
+// Import/Calibration Types
+// =============================================================================
+
+export type SourceType = 'pdf' | 'image' | 'dxf' | 'ifc' | 'sketch';
+
+export interface CalibrationPoint {
+  id: string;
+  pixelPoint: Point2D;
+  realWorldDistance?: number;
+}
+
+export interface ImportedDrawing {
+  id: string;
+  name: string;
+  sourceType: SourceType;
+  dataUrl: string;
+  originalWidth: number;
+  originalHeight: number;
+  scale: number;
+  rotation: number;
+  opacity: number;
+  locked: boolean;
+  calibrationPoints?: CalibrationPoint[];
+}
+
+export interface DetectedElement {
+  id: string;
+  type: 'wall' | 'door' | 'window' | 'room' | 'text' | 'dimension';
+  confidence: number;
+  points: Point2D[];
+  boundingBox: { x: number; y: number; width: number; height: number };
+  metadata?: Record<string, unknown>;
+  accepted: boolean;
+}
+
+// =============================================================================
+// Layer Types
+// =============================================================================
+
+export interface DrawingLayer {
   id: string;
   name: string;
   visible: boolean;
   locked: boolean;
-  color: string;
-  order: number;
+  opacity: number;
+  color?: string;
+  elements: string[];
 }
 
-// ============================================================================
-// View-Specific Types
-// ============================================================================
+// =============================================================================
+// HVAC Types
+// =============================================================================
 
-export interface CutLine {
+export type IndoorUnitType = 'wall-mounted' | 'ceiling-cassette' | 'ducted' | 'floor-standing';
+export type DuctShape = 'rectangular' | 'round';
+export type PipeRouteStyle = 'manhattan' | 'direct';
+export type DuctSystem = 'supply' | 'return';
+export type PipeSystem = 'refrigerant-liquid' | 'refrigerant-suction' | 'condensate';
+export type DiffuserType = 'square' | 'linear' | 'grille';
+
+export interface RoomInput {
   id: string;
   name: string;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  direction: "horizontal" | "vertical" | "angled";
-  lookDirection: "left" | "right" | "up" | "down";
+  polygon: Point2D[];
+  areaM2: number;
+  heightM: number;
+  requiredCoolingKW?: number;
 }
 
-export interface DetailArea {
+export interface IndoorUnit2D {
   id: string;
-  name: string;
-  x: number;
-  y: number;
+  roomId: string;
+  type: IndoorUnitType;
+  position: Point2D;
+  capacityKW: number;
+  servedDiffuserIds: string[];
+}
+
+export interface OutdoorUnit2D {
+  id: string;
+  position: Point2D;
+  capacityKW: number;
+  connectedIndoorIds: string[];
+}
+
+export interface Diffuser2D {
+  id: string;
+  roomId: string;
+  type: DiffuserType;
+  position: Point2D;
+  flowM3s: number;
+}
+
+export interface DuctSegment2D {
+  id: string;
+  system: DuctSystem;
+  shape: DuctShape;
+  path: Point2D[];
+  airflowM3s: number;
+  widthMm?: number;
+  heightMm?: number;
+  diameterMm?: number;
+}
+
+export interface PipeSegment2D {
+  id: string;
+  system: PipeSystem;
+  path: Point2D[];
+  diameterMm: number;
+  insulated: boolean;
+}
+
+export interface SmartDrawingLayout {
+  rooms: RoomInput[];
+  indoorUnits: IndoorUnit2D[];
+  outdoorUnits: OutdoorUnit2D[];
+  diffusers: Diffuser2D[];
+  ducts: DuctSegment2D[];
+  pipes: PipeSegment2D[];
+  notes: string[];
+}
+
+export interface SmartDrawingConfig {
+  loadWm2: number;
+  diffuserCoverageM2: number;
+  ductVelocityMain: number;
+  ductVelocityBranch: number;
+  ductAspectRatio: number;
+  ductMinSizeMm: number;
+  ductSizeStepMm: number;
+  flexDuctPerDiffuserM: number;
+  condensatePerUnitM: number;
+}
+
+export interface SmartDrawingOptions {
+  unitType: IndoorUnitType;
+  ductShape: DuctShape;
+  pipeRoute: PipeRouteStyle;
+}
+
+// =============================================================================
+// BOQ Types
+// =============================================================================
+
+export interface BoqLineItem {
+  code: string;
+  description: string;
+  unit: string;
+  quantity: number;
+}
+
+export interface BoqSummary {
+  items: BoqLineItem[];
+  totals: Record<string, number>;
+}
+
+// =============================================================================
+// Page Configuration
+// =============================================================================
+
+export interface PageConfig {
   width: number;
   height: number;
-  scale: number; // e.g., 5 for 1:5 zoom
+  orientation: 'portrait' | 'landscape';
 }
 
-// ============================================================================
-// Selection & Interaction Types
-// ============================================================================
-
-export interface SelectionBox {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
+export interface PageLayout {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  orientation: 'portrait' | 'landscape';
 }
 
-export interface DragState {
-  isDragging: boolean;
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
+// =============================================================================
+// History Types
+// =============================================================================
+
+export interface HistorySnapshot {
+  walls: Wall2D[];
+  rooms: Room2D[];
+  detectedElements: DetectedElement[];
+  dimensions: Dimension2D[];
+  annotations: Annotation2D[];
+  sketches: Sketch2D[];
+  symbols: SymbolInstance2D[];
 }
-
-// ============================================================================
-// Tool Types
-// ============================================================================
-
-export type ToolType =
-  | "select"
-  | "pan"
-  | "zoom"
-  | "duct"
-  | "elbow"
-  | "tee"
-  | "reducer"
-  | "diffuser"
-  | "grille"
-  | "damper"
-  | "equipment"
-  | "cut_line"
-  | "detail_area"
-  | "dimension"
-  | "text"
-  | "eraser";
-
-export interface ToolState {
-  activeTool: ToolType;
-  toolOptions: Record<string, unknown>;
-}
-
-// ============================================================================
-// History Types (Undo/Redo)
-// ============================================================================
 
 export interface HistoryEntry {
   id: string;
-  timestamp: Date;
+  timestamp: number;
   action: string;
-  components: HVACComponent[];
-  connections: Connection[];
+  snapshot: HistorySnapshot;
 }
 
-// ============================================================================
-// Canvas Store Types
-// ============================================================================
+// =============================================================================
+// Floor Plan Data Export
+// =============================================================================
 
-export interface CanvasState {
-  // Project info
-  drawingId: string | null;
-  projectId: string | null;
-
-  // Components & Connections
-  components: Map<string, HVACComponent>;
-  connections: Map<string, Connection>;
-  layers: Map<string, Layer>;
-
-  // View state
-  views: {
-    plan: ViewState;
-    section: ViewState;
-    end: ViewState;
-    detail: ViewState;
-  };
-  activeView: ViewType;
-  cutLines: CutLine[];
-  detailAreas: DetailArea[];
-  activeCutLineId: string | null;
-  activeDetailAreaId: string | null;
-
-  // Selection
-  selectedIds: Set<string>;
-  selectionBox: SelectionBox | null;
-
-  // Tools
-  activeTool: ToolType;
-  toolOptions: Record<string, unknown>;
-
-  // Settings
-  settings: CanvasSettings;
-
-  // History
-  history: HistoryEntry[];
-  historyIndex: number;
-  maxHistoryLength: number;
-
-  // Status
-  isDirty: boolean;
-  isSaving: boolean;
-  lastSavedAt: Date | null;
+export interface FloorPlanData {
+  walls: Wall2D[];
+  rooms: Room2D[];
+  guides?: Guide[];
+  scale: number;
+  width: number;
+  height: number;
 }
 
-export interface CanvasActions {
-  // Initialization
-  initialize: (drawingId: string, projectId: string) => void;
-  loadDrawing: (data: {
-    components: HVACComponent[];
-    connections: Connection[];
-    layers: Layer[];
-    cutLines: CutLine[];
-    detailAreas: DetailArea[];
-  }) => void;
-  reset: () => void;
+// =============================================================================
+// Additional HVAC Layout Types (for duct planning)
+// =============================================================================
 
-  // Component operations
-  addComponent: (component: HVACComponent) => void;
-  updateComponent: (id: string, updates: Partial<HVACComponent>) => void;
-  deleteComponent: (id: string) => void;
-  duplicateComponent: (id: string) => string;
-
-  // Connection operations
-  addConnection: (connection: Connection) => void;
-  updateConnection: (id: string, updates: Partial<Connection>) => void;
-  deleteConnection: (id: string) => void;
-
-  // Layer operations
-  addLayer: (layer: Layer) => void;
-  updateLayer: (id: string, updates: Partial<Layer>) => void;
-  deleteLayer: (id: string) => void;
-  reorderLayers: (layerIds: string[]) => void;
-
-  // Selection
-  select: (id: string, addToSelection?: boolean) => void;
-  selectMultiple: (ids: string[]) => void;
-  selectAll: () => void;
-  deselectAll: () => void;
-  setSelectionBox: (box: SelectionBox | null) => void;
-
-  // View operations
-  setActiveView: (view: ViewType) => void;
-  setZoom: (zoom: number) => void;
-  setPan: (x: number, y: number) => void;
-  zoomToFit: () => void;
-
-  // Cut lines & detail areas
-  addCutLine: (cutLine: CutLine) => void;
-  updateCutLine: (id: string, updates: Partial<CutLine>) => void;
-  deleteCutLine: (id: string) => void;
-  setActiveCutLine: (id: string | null) => void;
-  addDetailArea: (area: DetailArea) => void;
-  updateDetailArea: (id: string, updates: Partial<DetailArea>) => void;
-  deleteDetailArea: (id: string) => void;
-  setActiveDetailArea: (id: string | null) => void;
-
-  // Tools
-  setActiveTool: (tool: ToolType) => void;
-  setToolOptions: (options: Record<string, unknown>) => void;
-
-  // Settings
-  updateSettings: (settings: Partial<CanvasSettings>) => void;
-
-  // History
-  undo: () => void;
-  redo: () => void;
-  pushToHistory: () => void;
-
-  // Persistence
-  markDirty: () => void;
-  markSaved: () => void;
-  getSerializedState: () => SerializedCanvasState;
+export interface RefrigerantLine2D {
+  id: string;
+  path: Point2D[];
+  diameter: number;
+  type: 'liquid' | 'suction';
+  fromUnitId: string;
+  toUnitId: string;
 }
 
-export type CanvasStore = CanvasState & CanvasActions;
-
-// ============================================================================
-// Serialization Types (for save/load)
-// ============================================================================
-
-export interface SerializedCanvasState {
-  components: HVACComponent[];
-  connections: Connection[];
-  layers: Layer[];
-  cutLines: CutLine[];
-  detailAreas: DetailArea[];
-  settings: CanvasSettings;
+export interface DrainLine2D {
+  id: string;
+  path: Point2D[];
+  diameter: number;
+  slope: number;
+  fromUnitId: string;
 }
 
-// ============================================================================
-// Component Props Types
-// ============================================================================
-
-export interface HVACCanvasProps {
-  drawingId: string;
-  projectId: string;
-  onSave?: (data: SerializedCanvasState) => Promise<void>;
-  onAutoSave?: (data: SerializedCanvasState) => Promise<void>;
-  autoSaveInterval?: number;
-  readOnly?: boolean;
+export interface ControlWiring2D {
+  id: string;
+  path: Point2D[];
+  type: 'power' | 'communication';
+  fromId: string;
+  toId: string;
 }
 
-export interface ComponentRendererProps {
-  component: HVACComponent;
-  isSelected: boolean;
-  onSelect: (id: string, addToSelection?: boolean) => void;
-  onDragStart: (id: string) => void;
-  onDragEnd: (id: string, x: number, y: number) => void;
-  onTransformEnd: (id: string, props: Partial<HVACComponent>) => void;
-}
-
-export interface ViewRibbonProps {
-  activeView: ViewType;
-  onViewChange: (view: ViewType) => void;
-  activeTool: ToolType;
-  onToolChange: (tool: ToolType) => void;
+export interface HVACLayout2D {
+  id: string;
+  indoorUnits: IndoorUnit2D[];
+  outdoorUnits: OutdoorUnit2D[];
+  ductSegments: DuctSegment2D[];
+  refrigerantLines: RefrigerantLine2D[];
+  drainLines: DrainLine2D[];
+  controlWiring: ControlWiring2D[];
 }

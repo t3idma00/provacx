@@ -30,9 +30,9 @@ export interface CreateContextOptions {
 }
 
 /**
- * Inner context - shared between all procedures
+ * Context type - shared between all procedures
  */
-interface InnerContext {
+export interface Context {
   prisma: PrismaClient;
   session: Session | null;
   user: User | null;
@@ -42,9 +42,9 @@ interface InnerContext {
 }
 
 /**
- * Create the inner context
+ * Create context for API handlers
  */
-async function createInnerContext(opts: CreateContextOptions): Promise<InnerContext> {
+export async function createContext(opts: CreateContextOptions): Promise<Context> {
   let user: User | null = null;
 
   if (opts.session?.user?.id) {
@@ -62,15 +62,3 @@ async function createInnerContext(opts: CreateContextOptions): Promise<InnerCont
     platformAdmin: opts.platformAdmin ?? null,
   };
 }
-
-/**
- * Create context for API handlers
- */
-export async function createContext(opts: CreateContextOptions): Promise<Context> {
-  return createInnerContext(opts);
-}
-
-/**
- * Context type used by tRPC procedures
- */
-export type Context = Awaited<ReturnType<typeof createInnerContext>>;
