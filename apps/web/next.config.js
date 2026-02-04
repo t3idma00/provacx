@@ -1,3 +1,6 @@
+const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -22,7 +25,6 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     // Handle canvas module for Konva (required for SSR compatibility)
     if (!isServer) {
-      // Client-side: canvas is not needed, stub it out
       config.resolve.fallback = {
         ...config.resolve.fallback,
         canvas: false,
@@ -30,6 +32,30 @@ const nextConfig = {
     } else {
       // Server-side: externalize canvas to avoid bundling issues
       config.externals = [...(config.externals || []), { canvas: "canvas" }];
+
+      // Copy Prisma engine files for serverless deployment
+      config.plugins.push(
+        new CopyPlugin({
+          patterns: [
+            {
+              from: path.join(
+                __dirname,
+                "../../node_modules/.prisma/client/*.node"
+              ),
+              to: path.join(__dirname, ".next/server/[name][ext]"),
+              noErrorOnMissing: true,
+            },
+            {
+              from: path.join(
+                __dirname,
+                "../../node_modules/.prisma/client/*.node"
+              ),
+              to: path.join(__dirname, ".next/[name][ext]"),
+              noErrorOnMissing: true,
+            },
+          ],
+        })
+      );
     }
     return config;
   },
