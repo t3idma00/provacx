@@ -5,6 +5,7 @@ const nextConfig = {
     "@provacx/api",
     "@provacx/database",
     "@provacx/shared",
+    "@provacx/ui",
     "@provacx/drawing-engine",
     "@provacx/boq-engine",
     "@provacx/document-editor",

@@ -4,8 +4,9 @@
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "postinstall": "prisma generate --schema=packages/database/prisma/schema.prisma",
     "build": "turbo build",
-    "vercel-build": "turbo build --filter=@provacx/web",
+    "vercel-build": "prisma generate --schema=packages/database/prisma/schema.prisma && turbo build --filter=@provacx/web",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
