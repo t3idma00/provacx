@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-        "build": "turbo build",
+    "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
@@ -17,6 +17,7 @@
   "devDependencies": {
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
+    "next": "^14.2.3",
     "prettier": "^3.2.5",
     "turbo": "^2.0.0"
   },
