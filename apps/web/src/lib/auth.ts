@@ -26,7 +26,7 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
     signOut: "/",
     error: "/login",
-    newUser: "/onboarding",
+    newUser: "/onboarding/organization",
   },
   providers: [
     Google({
