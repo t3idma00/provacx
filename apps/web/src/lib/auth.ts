@@ -18,8 +18,9 @@ const credentialsSchema = z.object({
 });
 
 export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
-  debug: process.env.NODE_ENV === "development",
+  // Temporarily disable adapter to test OAuth without database
+  // adapter: PrismaAdapter(prisma),
+  debug: true, // Enable debug in production too
   session: {
     strategy: "jwt",
   },
@@ -75,28 +76,13 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      try {
-        // Log sign-in attempts for debugging
-        console.log("SignIn callback:", {
-          email: user?.email,
-          provider: account?.provider,
-          hasProfile: !!profile
-        });
-
-        // For OAuth providers, check if we can connect to database
-        if (account?.provider === "google") {
-          console.log("Google OAuth sign-in attempt for:", user?.email);
-
-          // Test database connection
-          const dbTest = await prisma.$queryRaw`SELECT 1 as test`;
-          console.log("Database connection test:", dbTest);
-        }
-
-        return true;
-      } catch (error) {
-        console.error("SignIn callback error:", error);
-        return false;
-      }
+      // Log sign-in attempts for debugging
+      console.log("SignIn callback:", {
+        email: user?.email,
+        provider: account?.provider,
+        hasProfile: !!profile
+      });
+      return true;
     },
     async jwt({ token, user, account }) {
       // Initial sign in - user object is only available on first call
