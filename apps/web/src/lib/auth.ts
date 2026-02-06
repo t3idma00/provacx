@@ -20,7 +20,9 @@ const credentialsSchema = z.object({
 export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: "jwt",
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   pages: {
     signIn: "/login",
@@ -79,30 +81,13 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account, profile }) {
-      // Initial sign in
-      if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.image = user.image;
-      }
-      
-      // Google OAuth - ensure we have the profile data
-      if (account?.provider === "google" && profile) {
-        token.email = profile.email;
-        token.name = profile.name;
-        token.image = profile.picture;
-      }
-      
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-        session.user.image = token.image as string;
+    async session({ session, user }) {
+      // With database strategy, user comes from database
+      if (session.user) {
+        session.user.id = user.id;
+        session.user.email = user.email;
+        session.user.name = user.name;
+        session.user.image = user.image;
       }
       return session;
     },
