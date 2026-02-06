@@ -2,7 +2,6 @@
  * NextAuth Configuration
  */
 
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
@@ -17,10 +16,35 @@ const credentialsSchema = z.object({
   password: z.string().min(8),
 });
 
+const authDebug =
+  process.env.NEXTAUTH_DEBUG === "true" ||
+  process.env.AUTH_DEBUG === "true" ||
+  process.env.NODE_ENV === "development";
+
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleEnabled = Boolean(googleClientId && googleClientSecret);
+
+if (authDebug && !authSecret) {
+  console.warn(
+    "Auth secret is missing. Set AUTH_SECRET (recommended) or NEXTAUTH_SECRET."
+  );
+}
+
+if (authDebug && !googleEnabled) {
+  console.warn(
+    "Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it."
+  );
+}
+
 export const authConfig: NextAuthConfig = {
   // Temporarily disable adapter to test OAuth without database
   // adapter: PrismaAdapter(prisma),
-  debug: true, // Enable debug in production too
+  debug: authDebug,
+  trustHost: true,
+  secret: authSecret,
   session: {
     strategy: "jwt",
   },
@@ -31,11 +55,15 @@ export const authConfig: NextAuthConfig = {
     newUser: "/onboarding/organization",
   },
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
-    }),
+    ...(googleEnabled
+      ? [
+          Google({
+            clientId: googleClientId!,
+            clientSecret: googleClientSecret!,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       name: "credentials",
       credentials: {
@@ -80,7 +108,7 @@ export const authConfig: NextAuthConfig = {
       console.log("SignIn callback:", {
         email: user?.email,
         provider: account?.provider,
-        hasProfile: !!profile
+        hasProfile: !!profile,
       });
       return true;
     },

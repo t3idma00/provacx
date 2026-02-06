@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getProviders, signIn, useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,19 +22,64 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+function getAuthErrorMessage(error: string) {
+  switch (error) {
+    case "Configuration":
+      return "Authentication is misconfigured. Please try again later.";
+    case "AccessDenied":
+      return "Access denied. Please try a different account.";
+    case "OAuthAccountNotLinked":
+      return "This email is already linked to another sign-in method.";
+    case "OAuthCallback":
+    case "OAuthCreateAccount":
+    case "OAuthSignin":
+      return "Google sign-in failed. Please try again.";
+    case "CredentialsSignin":
+      return "Sign-up failed. Please try again.";
+    default:
+      return "Sign-up failed. Please try again.";
+  }
+}
+
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { status } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
 
   const checkEmail = trpc.user.checkEmail.useMutation();
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [router, status]);
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (!errorParam) return;
+    setError(getAuthErrorMessage(errorParam));
+  }, [searchParams]);
+
+  useEffect(() => {
+    getProviders()
+      .then((providers) => {
+        setGoogleEnabled(Boolean(providers?.google));
+      })
+      .finally(() => {
+        setProvidersLoaded(true);
+      });
+  }, []);
 
   // Listen for OAuth callback messages from popup
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "oauth-callback" && event.data?.success) {
-        router.push("/onboarding");
+        router.push("/onboarding/organization");
       }
     };
     window.addEventListener("message", handleMessage);
@@ -82,7 +127,7 @@ export default function RegisterPage() {
       await signIn("credentials", {
         email: data.email,
         password: data.password,
-        callbackUrl: "/onboarding",
+        callbackUrl: "/onboarding/organization",
       });
     } catch {
       setError("Registration failed. Please try again.");
@@ -91,8 +136,9 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    setError(null);
 
     // Calculate popup position (center of screen)
     const width = 500;
@@ -102,7 +148,7 @@ export default function RegisterPage() {
 
     // Open popup window
     const popup = window.open(
-      `/api/auth/signin/google?callbackUrl=${encodeURIComponent("/onboarding")}`,
+      "about:blank",
       "google-signin",
       `width=${width},height=${height},left=${left},top=${top},popup=1`
     );
@@ -111,7 +157,29 @@ export default function RegisterPage() {
     if (!popup) {
       setIsGoogleLoading(false);
       // Fallback to redirect if popup blocked
-      signIn("google", { callbackUrl: "/onboarding" });
+      signIn("google", { callbackUrl: "/onboarding/organization" });
+      return;
+    }
+
+    try {
+      const result = await signIn("google", {
+        callbackUrl: "/onboarding/organization",
+        redirect: false,
+      });
+
+      if (!result?.url) {
+        popup.close();
+        setError("Google sign-up failed. Please try again.");
+        setIsGoogleLoading(false);
+        return;
+      }
+
+      popup.location.href = result.url;
+      popup.focus();
+    } catch {
+      popup.close();
+      setError("Google sign-up failed. Please try again.");
+      setIsGoogleLoading(false);
       return;
     }
 
@@ -224,39 +292,57 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {isGoogleLoading ? (
-              <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-            )}
-            {isGoogleLoading ? "Signing up..." : "Continue with Google"}
-          </button>
+          {providersLoaded && !googleEnabled ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm text-gray-600">
+              Google sign-in is not available.
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={!providersLoaded || !googleEnabled || isGoogleLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {isGoogleLoading ? (
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+              )}
+              {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+            </button>
+          )}
         </form>
 
         <p className="text-center text-sm text-gray-600">
