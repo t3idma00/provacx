@@ -201,6 +201,7 @@ export interface DrawingState {
   // Actions - View
   setZoom: (zoom: number) => void;
   setPanOffset: (offset: Point2D) => void;
+  setViewTransform: (zoom: number, offset: Point2D) => void;
   setGridSize: (size: number) => void;
   setSnapToGrid: (snap: boolean) => void;
   setShowGrid: (show: boolean) => void;
@@ -659,6 +660,11 @@ export const useDrawingStore = create<DrawingState>()(
       // View Actions
       setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
       setPanOffset: (offset) => set({ panOffset: offset }),
+      setViewTransform: (zoom, offset) =>
+        set({
+          zoom: Math.max(0.1, Math.min(10, zoom)),
+          panOffset: offset,
+        }),
       setGridSize: (size) => set({ gridSize: size }),
       setSnapToGrid: (snap) => set({ snapToGrid: snap }),
       setShowGrid: (show) => set({ showGrid: show }),

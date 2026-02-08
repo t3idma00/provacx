@@ -477,7 +477,7 @@ export function SmartDrawingEditor({
 
     // Track mouse position
     canvas.on('mouse:move', (e) => {
-      const pointer = canvas.getViewportPoint(e.e);
+      const pointer = canvas.getScenePoint(e.e);
       setMousePosition({ x: pointer.x, y: pointer.y });
     });
   }, []);
