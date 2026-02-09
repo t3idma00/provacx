@@ -7,9 +7,21 @@
 'use client';
 
 import React from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, ArrowUp, ArrowDown, RotateCcw, Plus } from 'lucide-react';
 import { useSmartDrawingStore } from '../store';
-import type { DisplayUnit, Room2D, Wall2D } from '../types';
+import type { DisplayUnit, MaterialType, Room2D, Wall2D } from '../types';
+import {
+  MATERIAL_LIBRARY,
+  createWallFromTypeDefaults,
+  getDefaultLayerPreset,
+  getWallCoreThickness,
+  getWallFinishThickness,
+  getWallRValue,
+  getWallTotalThickness,
+  getWallTypeById,
+  getWallUValue,
+  resolveWallLayers,
+} from '../utils/wall-types';
 
 const PX_TO_MM = 25.4 / 96;
 
@@ -117,6 +129,22 @@ function displayStep(unit: DisplayUnit): number {
   }
 }
 
+const CORE_MATERIAL_OPTIONS: Array<{ value: MaterialType; label: string }> = [
+  { value: 'cement-block', label: 'Cement Block' },
+  { value: 'clay-brick', label: 'Clay Brick' },
+  { value: 'concrete', label: 'Concrete' },
+  { value: 'concrete-block', label: 'Concrete Block' },
+  { value: 'gypsum-board', label: 'Gypsum Board' },
+];
+
+const LAYER_PRESET_OPTIONS = [
+  { value: 'insulation', label: 'Insulation 50mm' },
+  { value: 'plaster', label: 'Plaster 12mm' },
+  { value: 'vapor-barrier', label: 'Vapor Barrier 0.2mm' },
+  { value: 'air-gap', label: 'Air Gap 25mm' },
+  { value: 'waterproofing', label: 'Waterproofing 3mm' },
+] as const;
+
 function formatDistance(mm: number, unit: DisplayUnit): string {
   if (!Number.isFinite(mm)) return '0 mm';
   switch (unit) {
@@ -189,10 +217,36 @@ function UnitSelector() {
 }
 
 function WallProperties({ wall }: { wall: Wall2D }) {
-  const { updateWall, displayUnit } = useSmartDrawingStore();
+  const {
+    updateWall,
+    displayUnit,
+    wallTypeRegistry,
+    setWallTotalThickness,
+    addWallLayerToWall,
+    removeWallLayerFromWall,
+    reorderWallLayerInWall,
+    updateWallLayerThicknessInWall,
+    convertWallCoreMaterialForWall,
+    resetWallLayerOverrides,
+  } = useSmartDrawingStore();
+
+  const [layerPreset, setLayerPreset] = React.useState<(typeof LAYER_PRESET_OPTIONS)[number]['value']>('insulation');
   const lengthPx = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
   const lengthMm = lengthPx * PX_TO_MM;
   const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x) * (180 / Math.PI);
+  const wallType = getWallTypeById(wall.wallTypeId, wallTypeRegistry);
+  const layers = resolveWallLayers(wall, wallTypeRegistry);
+  const totalThickness = getWallTotalThickness(wall, wallTypeRegistry);
+  const coreThickness = getWallCoreThickness(wall, wallTypeRegistry);
+  const finishThickness = getWallFinishThickness(wall, wallTypeRegistry);
+  const rValue = getWallRValue(wall, wallTypeRegistry);
+  const uValue = getWallUValue(wall, wallTypeRegistry);
+  const coreLayer = layers.find((layer) => layer.isCore) ?? null;
+
+  const showWarnings = (warnings: string[]) => {
+    if (warnings.length === 0 || typeof window === 'undefined') return;
+    window.alert(warnings.join('\n'));
+  };
 
   const setLengthMm = (nextLengthMm: number) => {
     if (!Number.isFinite(nextLengthMm) || nextLengthMm <= 1) return;
@@ -208,6 +262,30 @@ function WallProperties({ wall }: { wall: Wall2D }) {
         y: wall.start.y + dy * scale,
       },
     });
+  };
+
+  const applyWallType = (nextWallTypeId: string) => {
+    const defaults = createWallFromTypeDefaults(nextWallTypeId, wallTypeRegistry);
+    updateWall(wall.id, {
+      wallTypeId: defaults.wallTypeId,
+      wallLayers: defaults.wallLayers,
+      thickness: defaults.thickness,
+      height: defaults.height,
+      material: defaults.material,
+      color: defaults.color,
+      isWallTypeOverride: false,
+    });
+  };
+
+  const handleCoreMaterialChange = (material: MaterialType) => {
+    const warnings = convertWallCoreMaterialForWall(wall.id, material);
+    showWarnings(warnings);
+  };
+
+  const addLayerPreset = () => {
+    const presetLayer = getDefaultLayerPreset(layerPreset, layers.length);
+    const warnings = addWallLayerToWall(wall.id, presetLayer, layers.length);
+    showWarnings(warnings);
   };
 
   return (
@@ -229,10 +307,24 @@ function WallProperties({ wall }: { wall: Wall2D }) {
         <span className="text-sm font-mono">{angle.toFixed(1)} deg</span>
       </PropertyRow>
 
+      <PropertyRow label="Wall Type">
+        <select
+          value={wall.wallTypeId ?? wallType.id}
+          onChange={(event) => applyWallType(event.target.value)}
+          className="w-44 px-2 py-1 text-sm border border-amber-200/80 rounded focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+        >
+          {wallTypeRegistry.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.name}
+            </option>
+          ))}
+        </select>
+      </PropertyRow>
+
       <PropertyRow label="Thickness">
         <NumberInput
-          value={wall.thickness}
-          onChange={(value) => updateWall(wall.id, { thickness: value })}
+          value={totalThickness}
+          onChange={(value) => showWarnings(setWallTotalThickness(wall.id, value))}
           min={10}
           max={1000}
           step={5}
@@ -251,12 +343,61 @@ function WallProperties({ wall }: { wall: Wall2D }) {
         />
       </PropertyRow>
 
+      <PropertyRow label="Core Material">
+        <select
+          value={coreLayer?.material ?? 'cement-block'}
+          onChange={(event) => handleCoreMaterialChange(event.target.value as MaterialType)}
+          className="w-44 px-2 py-1 text-sm border border-amber-200/80 rounded focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+        >
+          {CORE_MATERIAL_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </PropertyRow>
+
+      <PropertyRow label="Assembly">
+        <span className="text-xs font-mono text-slate-600">
+          Core {coreThickness.toFixed(1)} mm | Finish {finishThickness.toFixed(1)} mm
+        </span>
+      </PropertyRow>
+
+      <PropertyRow label="R / U Value">
+        <span className="text-xs font-mono text-slate-600">
+          R {rValue.toFixed(3)} | U {uValue.toFixed(3)}
+        </span>
+      </PropertyRow>
+
+      <PropertyRow label="Override">
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-semibold ${
+              wall.isWallTypeOverride ? 'text-orange-600' : 'text-emerald-600'
+            }`}
+          >
+            {wall.isWallTypeOverride ? 'Custom' : 'Type Default'}
+          </span>
+          {wall.isWallTypeOverride && (
+            <button
+              type="button"
+              onClick={() => resetWallLayerOverrides(wall.id)}
+              className="inline-flex items-center gap-1 rounded border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-50"
+              title="Reset wall layers to selected type defaults"
+            >
+              <RotateCcw size={11} />
+              Reset
+            </button>
+          )}
+        </div>
+      </PropertyRow>
+
       <PropertyRow label="Material">
         <input
           type="text"
-          value={wall.material || 'concrete'}
+          value={wall.material || MATERIAL_LIBRARY.generic.name}
           onChange={(e) => updateWall(wall.id, { material: e.target.value })}
-          className="w-24 px-2 py-1 text-sm border border-amber-200/80 rounded focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="w-32 px-2 py-1 text-sm border border-amber-200/80 rounded focus:outline-none focus:ring-1 focus:ring-amber-400"
         />
       </PropertyRow>
 
@@ -285,6 +426,111 @@ function WallProperties({ wall }: { wall: Wall2D }) {
           unit={unitSuffix(displayUnit)}
         />
       </PropertyRow>
+
+      <div className="mt-3 rounded-md border border-amber-200/70 bg-white/70 p-2">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Layers
+          </span>
+          <div className="flex items-center gap-1">
+            <select
+              value={layerPreset}
+              onChange={(event) =>
+                setLayerPreset(event.target.value as (typeof LAYER_PRESET_OPTIONS)[number]['value'])
+              }
+              className="h-7 rounded border border-amber-200/80 bg-white px-1 text-[11px] text-slate-700"
+            >
+              {LAYER_PRESET_OPTIONS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addLayerPreset}
+              className="inline-flex h-7 items-center gap-1 rounded border border-amber-300 px-1.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-50"
+              title="Add layer preset"
+            >
+              <Plus size={11} />
+              Add
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1">
+          {layers.map((layer, index) => (
+            <div
+              key={layer.id}
+              className="rounded border border-amber-100/80 bg-white p-1.5"
+            >
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold text-slate-700">
+                    {layer.name}
+                    {layer.isCore ? ' (Core)' : ''}
+                  </div>
+                  <div className="truncate text-[10px] text-slate-500">
+                    {MATERIAL_LIBRARY[layer.material]?.name ?? layer.material}
+                  </div>
+                </div>
+                <div
+                  className="h-4 w-4 rounded border border-slate-300"
+                  style={{ backgroundColor: layer.color || '#d1d5db' }}
+                  title={layer.hatchPattern}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-1">
+                <NumberInput
+                  value={layer.thickness}
+                  onChange={(value) =>
+                    showWarnings(updateWallLayerThicknessInWall(wall.id, layer.id, value))
+                  }
+                  min={0.2}
+                  max={400}
+                  step={0.5}
+                  unit="mm"
+                  className="text-[11px]"
+                />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      showWarnings(reorderWallLayerInWall(wall.id, index, Math.max(0, index - 1)))
+                    }
+                    className="rounded border border-amber-200 p-1 text-slate-600 hover:bg-amber-50 disabled:opacity-40"
+                    disabled={index === 0}
+                    title="Move layer up"
+                  >
+                    <ArrowUp size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      showWarnings(
+                        reorderWallLayerInWall(wall.id, index, Math.min(layers.length - 1, index + 1))
+                      )
+                    }
+                    className="rounded border border-amber-200 p-1 text-slate-600 hover:bg-amber-50 disabled:opacity-40"
+                    disabled={index === layers.length - 1}
+                    title="Move layer down"
+                  >
+                    <ArrowDown size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => showWarnings(removeWallLayerFromWall(wall.id, layer.id))}
+                    className="rounded border border-red-200 p-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    disabled={layer.isCore}
+                    title={layer.isCore ? 'Core layer cannot be removed' : 'Remove layer'}
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

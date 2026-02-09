@@ -723,7 +723,14 @@ export function SmartDrawingEditor({
                           icon={action.icon}
                           label={action.label}
                           active={activeTool === action.id}
-                          onClick={() => setTool(action.id)}
+                          onClick={() => {
+                            setTool(action.id);
+                            if (action.id === 'room' && typeof window !== 'undefined') {
+                              window.dispatchEvent(
+                                new CustomEvent('smart-drawing:room-tool-activate')
+                              );
+                            }
+                          }}
                           disabled={readOnly}
                         />
                       ))}

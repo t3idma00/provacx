@@ -17,19 +17,14 @@ import {
   Type,
   Eraser,
   Ruler,
-  Grid3X3,
   ZoomIn,
   ZoomOut,
   RotateCcw,
   RotateCw,
   Layers,
-  Download,
-  Upload,
-  Settings,
   Spline,
   Home,
   BoxSelect,
-  Move,
 } from 'lucide-react';
 import { useSmartDrawingStore } from '../store';
 import type { DrawingTool } from '../types';
@@ -237,21 +232,30 @@ export function Toolbar({
     >
       {/* Drawing Tools */}
       {showDrawingTools &&
-        DRAWING_TOOLS.map((toolDef) => (
-          <ToolButton
-            key={toolDef.id}
-            icon={toolDef.icon}
-            label={toolDef.label}
-            shortLabel={toolDef.shortLabel}
-            active={activeTool === toolDef.id}
-            onClick={() => setTool(toolDef.id)}
-            shortcut={toolDef.shortcut}
-            variant={variant}
-            showLabel={showLabels}
-            fullWidth={isGrid}
-            compact={isCompactGrid}
-          />
-        ))}
+        DRAWING_TOOLS.map((toolDef) => {
+          const handleToolClick = () => {
+            setTool(toolDef.id);
+            if (toolDef.id === 'room' && typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('smart-drawing:room-tool-activate'));
+            }
+          };
+
+          return (
+            <ToolButton
+              key={toolDef.id}
+              icon={toolDef.icon}
+              label={toolDef.label}
+              shortLabel={toolDef.shortLabel}
+              active={activeTool === toolDef.id}
+              onClick={handleToolClick}
+              shortcut={toolDef.shortcut}
+              variant={variant}
+              showLabel={showLabels}
+              fullWidth={isGrid}
+              compact={isCompactGrid}
+            />
+          );
+        })}
 
       {layout !== 'grid' &&
         showDrawingTools &&

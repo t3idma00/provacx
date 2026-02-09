@@ -74,6 +74,65 @@ export interface SplineControlPoint {
 // =============================================================================
 
 export type WallType = 'exterior' | 'interior' | 'partition';
+export type WallCategory = 'structural' | 'partition' | 'curtain';
+export type MaterialType =
+  | 'cement-block'
+  | 'clay-brick'
+  | 'concrete'
+  | 'concrete-block'
+  | 'gypsum-board'
+  | 'plaster'
+  | 'putty-skim'
+  | 'eps-insulation'
+  | 'xps-insulation'
+  | 'mineral-wool'
+  | 'air-cavity'
+  | 'vapor-barrier'
+  | 'waterproofing'
+  | 'stud-air-gap'
+  | 'generic';
+
+export interface MaterialProperties {
+  material: MaterialType;
+  name: string;
+  thermalConductivity: number;
+  density: number;
+  specificHeatCapacity: number;
+}
+
+export interface WallLayer {
+  id: string;
+  name: string;
+  material: MaterialType;
+  thickness: number;
+  isCore: boolean;
+  color: string;
+  hatchPattern: string;
+  thermalConductivity: number;
+  density: number;
+  specificHeatCapacity: number;
+  order: number;
+}
+
+export interface WallLayerThicknessConstraint {
+  min: number;
+  max?: number;
+  step?: number;
+}
+
+export interface WallTypeDefinition {
+  id: string;
+  name: string;
+  category: WallCategory;
+  layers: WallLayer[];
+  totalThickness: number;
+  uValue: number;
+  defaultHeight: number;
+  planTextureId: string;
+  sectionTextureId: string;
+  coreColor: string;
+}
+
 export type OpeningType = 'window' | 'door';
 export type SketchType = 
   | 'line' 
@@ -123,6 +182,9 @@ export interface Wall2D {
   thickness: number;
   height: number;
   wallType: WallType;
+  wallTypeId?: string;
+  wallLayers?: WallLayer[];
+  isWallTypeOverride?: boolean;
   material?: string;
   color?: string;
   layer?: string;

@@ -11,6 +11,9 @@ import type {
   Point2D,
   DisplayUnit,
   Wall2D,
+  WallLayer,
+  WallTypeDefinition,
+  MaterialType,
   Room2D,
   Opening2D,
   Dimension2D,
@@ -31,6 +34,19 @@ import type {
 import { DEFAULT_SPLINE_SETTINGS } from '../utils/spline';
 import { generateId } from '../utils/geometry';
 import { applyNestedRoomHierarchy, detectRoomsFromWallGraph } from '../utils/room-detection';
+import {
+  BUILT_IN_WALL_TYPES,
+  DEFAULT_WALL_TYPE_ID,
+  addWallLayer,
+  convertWallCoreMaterial,
+  getWallTypeRegistry,
+  normalizeWallForTypeSystem,
+  removeWallLayer,
+  reorderWallLayers,
+  resetWallToTypeDefault,
+  resizeWallTotalThickness,
+  updateWallLayerThickness,
+} from '../utils/wall-types';
 
 // =============================================================================
 // Default Settings
@@ -219,9 +235,13 @@ function detectRoomsIncremental(
   return sortRoomsForDisplay(applyNestedRoomHierarchy([...unaffectedRooms, ...recalculatedRooms]));
 }
 
-function withRebuiltAdjacency(walls: Wall2D[]): Wall2D[] {
-  const adjacency = buildWallAdjacencyMap(walls, WALL_NODE_TOLERANCE_PX);
-  return walls.map((wall) => ({
+function withRebuiltAdjacency(
+  walls: Wall2D[],
+  wallTypeRegistry: WallTypeDefinition[] = BUILT_IN_WALL_TYPES
+): Wall2D[] {
+  const normalizedWalls = walls.map((wall) => normalizeWallForTypeSystem(wall, wallTypeRegistry));
+  const adjacency = buildWallAdjacencyMap(normalizedWalls, WALL_NODE_TOLERANCE_PX);
+  return normalizedWalls.map((wall) => ({
     ...wall,
     connectedWallIds: Array.from(adjacency.get(wall.id) ?? []),
   }));
@@ -277,6 +297,8 @@ export interface DrawingState {
   
   // Tool State
   activeTool: DrawingTool;
+  activeWallTypeId: string;
+  wallTypeRegistry: WallTypeDefinition[];
   activeLayerId: string | null;
   selectedElementIds: string[];
   hoveredElementId: string | null;
@@ -341,6 +363,15 @@ export interface DrawingState {
   addWall: (wall: Omit<Wall2D, 'id' | 'openings'>) => string;
   updateWall: (id: string, data: Partial<Wall2D>) => void;
   deleteWall: (id: string) => void;
+  setActiveWallTypeId: (wallTypeId: string) => void;
+  setWallTypeRegistry: (customWallTypes: WallTypeDefinition[]) => void;
+  setWallTotalThickness: (wallId: string, totalThickness: number) => string[];
+  addWallLayerToWall: (wallId: string, layer: WallLayer, index: number) => string[];
+  removeWallLayerFromWall: (wallId: string, layerId: string) => string[];
+  reorderWallLayerInWall: (wallId: string, fromIndex: number, toIndex: number) => string[];
+  updateWallLayerThicknessInWall: (wallId: string, layerId: string, thickness: number) => string[];
+  convertWallCoreMaterialForWall: (wallId: string, material: MaterialType) => string[];
+  resetWallLayerOverrides: (wallId: string) => void;
   addOpeningToWall: (wallId: string, opening: Omit<Opening2D, 'id' | 'wallId'>) => string;
   updateOpening: (wallId: string, openingId: string, data: Partial<Opening2D>) => void;
   deleteOpening: (wallId: string, openingId: string) => void;
@@ -495,6 +526,8 @@ export const useDrawingStore = create<DrawingState>()(
       processingStatus: '',
       detectedElements: [],
       activeTool: 'select',
+      activeWallTypeId: DEFAULT_WALL_TYPE_ID,
+      wallTypeRegistry: getWallTypeRegistry(),
       activeLayerId: 'default',
       selectedElementIds: [],
       hoveredElementId: null,
@@ -577,7 +610,7 @@ export const useDrawingStore = create<DrawingState>()(
       // Wall Actions
       setWalls: (walls, historyAction = 'Update walls') => {
         set((state) => {
-          const normalizedWalls = withRebuiltAdjacency(walls);
+          const normalizedWalls = withRebuiltAdjacency(walls, state.wallTypeRegistry);
           return {
             walls: normalizedWalls,
             rooms: detectRoomsIncremental(state.walls, normalizedWalls, state.rooms),
@@ -589,10 +622,14 @@ export const useDrawingStore = create<DrawingState>()(
       addWall: (wall) => {
         const id = generateId();
         set((state) => {
+          const normalizedNewWall = normalizeWallForTypeSystem(
+            { ...wall, id, openings: [] },
+            state.wallTypeRegistry
+          );
           const nextWalls = withRebuiltAdjacency([
             ...state.walls,
-            { ...wall, id, openings: [] },
-          ]);
+            normalizedNewWall,
+          ], state.wallTypeRegistry);
           return {
             walls: nextWalls,
             rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
@@ -605,7 +642,8 @@ export const useDrawingStore = create<DrawingState>()(
       updateWall: (id, data) => {
         set((state) => {
           const nextWalls = withRebuiltAdjacency(
-            state.walls.map((w) => (w.id === id ? { ...w, ...data } : w))
+            state.walls.map((w) => (w.id === id ? { ...w, ...data } : w)),
+            state.wallTypeRegistry
           );
           return {
             walls: nextWalls,
@@ -617,13 +655,178 @@ export const useDrawingStore = create<DrawingState>()(
       
       deleteWall: (id) => {
         set((state) => {
-          const nextWalls = withRebuiltAdjacency(state.walls.filter((w) => w.id !== id));
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.filter((w) => w.id !== id),
+            state.wallTypeRegistry
+          );
           return {
             walls: nextWalls,
             rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
           };
         });
         get().saveToHistory('Delete wall');
+      },
+
+      setActiveWallTypeId: (wallTypeId) =>
+        set((state) => ({
+          activeWallTypeId: state.wallTypeRegistry.some((wallType) => wallType.id === wallTypeId)
+            ? wallTypeId
+            : state.activeWallTypeId,
+        })),
+
+      setWallTypeRegistry: (customWallTypes) => {
+        set((state) => {
+          const wallTypeRegistry = getWallTypeRegistry(customWallTypes);
+          const activeWallTypeId = wallTypeRegistry.some(
+            (wallType) => wallType.id === state.activeWallTypeId
+          )
+            ? state.activeWallTypeId
+            : DEFAULT_WALL_TYPE_ID;
+          const nextWalls = withRebuiltAdjacency(state.walls, wallTypeRegistry);
+          return {
+            wallTypeRegistry,
+            activeWallTypeId,
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+      },
+
+      setWallTotalThickness: (wallId, totalThickness) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = resizeWallTotalThickness(wall, totalThickness, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Resize wall thickness');
+        return warnings;
+      },
+
+      addWallLayerToWall: (wallId, layer, index) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = addWallLayer(wall, layer, index, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Add wall layer');
+        return warnings;
+      },
+
+      removeWallLayerFromWall: (wallId, layerId) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = removeWallLayer(wall, layerId, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Remove wall layer');
+        return warnings;
+      },
+
+      reorderWallLayerInWall: (wallId, fromIndex, toIndex) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = reorderWallLayers(wall, fromIndex, toIndex, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Reorder wall layers');
+        return warnings;
+      },
+
+      updateWallLayerThicknessInWall: (wallId, layerId, thickness) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = updateWallLayerThickness(wall, layerId, thickness, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Update wall layer thickness');
+        return warnings;
+      },
+
+      convertWallCoreMaterialForWall: (wallId, material) => {
+        let warnings: string[] = [];
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const result = convertWallCoreMaterial(wall, material, state.wallTypeRegistry);
+          warnings = result.warnings;
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? result.wall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Convert wall core material');
+        return warnings;
+      },
+
+      resetWallLayerOverrides: (wallId) => {
+        set((state) => {
+          const wall = state.walls.find((candidate) => candidate.id === wallId);
+          if (!wall) return state;
+          const resetWall = resetWallToTypeDefault(wall, state.wallTypeRegistry);
+          const nextWalls = withRebuiltAdjacency(
+            state.walls.map((candidate) => (candidate.id === wallId ? resetWall : candidate)),
+            state.wallTypeRegistry
+          );
+          return {
+            walls: nextWalls,
+            rooms: detectRoomsIncremental(state.walls, nextWalls, state.rooms),
+          };
+        });
+        get().saveToHistory('Reset wall to type default');
       },
       
       addOpeningToWall: (wallId, opening) => {
@@ -914,7 +1117,8 @@ export const useDrawingStore = create<DrawingState>()(
           ...roomDerivedWallIds,
         ]);
         const nextWalls = withRebuiltAdjacency(
-          walls.filter((wall) => !wallIdsToDelete.has(wall.id))
+          walls.filter((wall) => !wallIdsToDelete.has(wall.id)),
+          get().wallTypeRegistry
         );
         const nextRooms = detectRoomsIncremental(walls, nextWalls, rooms);
         set({
@@ -934,7 +1138,7 @@ export const useDrawingStore = create<DrawingState>()(
       setSelectedIds: (ids) => set({ selectedElementIds: ids, selectedIds: ids }),
       deleteSelected: () => get().deleteSelectedElements(),
       setTool: (tool) => set({ activeTool: tool, tool }),
-      loadData: (data) => { /* TODO: Implement data loading */ console.log('loadData:', data); },
+      loadData: (data) => { void data; },
       exportData: () => get().getFloorPlanData(),
 
       // Tool Actions
@@ -1157,7 +1361,10 @@ export const useDrawingStore = create<DrawingState>()(
       importFromJSON: (json) => {
         try {
           const data = JSON.parse(json);
-          const importedWalls: Wall2D[] = withRebuiltAdjacency(data.walls || []);
+          const importedWalls: Wall2D[] = withRebuiltAdjacency(
+            data.walls || [],
+            get().wallTypeRegistry
+          );
           const importedRooms: Room2D[] = data.rooms || [];
           const derivedRooms = detectRoomsFromWallGraph(importedWalls, importedRooms);
           set({

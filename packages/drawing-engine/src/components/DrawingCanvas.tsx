@@ -10,11 +10,25 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import * as fabric from 'fabric';
 import { useSmartDrawingStore } from '../store';
-import type { Point2D, DrawingTool, Wall2D, WallType, Room2D, DisplayUnit } from '../types';
+import type {
+  Point2D,
+  DrawingTool,
+  Wall2D,
+  WallType,
+  Room2D,
+  DisplayUnit,
+  WallTypeDefinition,
+} from '../types';
 import { Grid, PageLayout, Rulers } from './canvas';
 import { MM_TO_PX, PX_TO_MM } from './canvas/scale';
 import { generateId } from '../utils/geometry';
 import { detectRoomsFromWallGraph, validateNestedRooms } from '../utils/room-detection';
+import {
+  BUILT_IN_WALL_TYPE_IDS,
+  createWallFromTypeDefaults,
+  getWallTypeById,
+  resolveWallLayers,
+} from '../utils/wall-types';
 
 // =============================================================================
 // Types
@@ -61,7 +75,7 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10;
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 const WALL_SNAP_THRESHOLD_PX = 10;
-const WALL_DEFAULT_THICKNESS_MM = 1;
+const WALL_DEFAULT_THICKNESS_MM = 180;
 const WALL_DEFAULT_HEIGHT_MM = 2700;
 const WALL_DEFAULT_MATERIAL = 'concrete';
 const WALL_DEFAULT_COLOR = '#6b7280';
@@ -139,6 +153,8 @@ export function DrawingCanvas({
 
   const {
     activeTool: tool,
+    activeWallTypeId,
+    wallTypeRegistry,
     zoom,
     panOffset,
     displayUnit,
@@ -155,10 +171,17 @@ export function DrawingCanvas({
     setViewTransform,
     setSelectedIds,
     setHoveredElement,
+    setActiveWallTypeId,
+    setWallTypeRegistry,
     setWalls,
     addSketch,
     deleteSelected,
   } = useSmartDrawingStore();
+
+  const activeWallType = useMemo(
+    () => getWallTypeById(activeWallTypeId, wallTypeRegistry),
+    [activeWallTypeId, wallTypeRegistry]
+  );
 
   const resolvedGridSize = gridSize ?? storeGridSize ?? 20;
   const resolvedShowGrid = showGrid ?? storeShowGrid ?? true;
@@ -351,7 +374,11 @@ export function DrawingCanvas({
         startPoint,
         endPoint,
         activeLayerId ?? 'default',
-        ROOM_EDGE_OVERLAP_TOLERANCE
+        ROOM_EDGE_OVERLAP_TOLERANCE,
+        {
+          wallType: 'interior',
+          ...createWallFromTypeDefaults(activeWallTypeId, wallTypeRegistry),
+        }
       );
       nextWalls = rebuildWallAdjacency(nextWalls, WALL_ENDPOINT_TOLERANCE);
 
@@ -368,7 +395,7 @@ export function DrawingCanvas({
       wallsRef.current = nextWalls;
       setWalls(nextWalls, 'Draw wall');
     },
-    [activeLayerId, setWalls, notifyRoomValidation]
+    [activeLayerId, activeWallTypeId, wallTypeRegistry, setWalls, notifyRoomValidation]
   );
 
   const commitRoomFromVertices = useCallback(
@@ -386,7 +413,11 @@ export function DrawingCanvas({
           edge.start,
           edge.end,
           activeLayerId ?? 'default',
-          ROOM_EDGE_OVERLAP_TOLERANCE
+          ROOM_EDGE_OVERLAP_TOLERANCE,
+          {
+            wallType: 'interior',
+            ...createWallFromTypeDefaults(activeWallTypeId, wallTypeRegistry),
+          }
         );
       });
 
@@ -403,7 +434,7 @@ export function DrawingCanvas({
       wallsRef.current = nextWalls;
       setWalls(nextWalls, 'Draw room');
     },
-    [activeLayerId, setWalls, notifyRoomValidation]
+    [activeLayerId, activeWallTypeId, wallTypeRegistry, setWalls, notifyRoomValidation]
   );
 
   const applyTransientWallGraph = useCallback((nextWalls: Wall2D[]) => {
@@ -436,6 +467,7 @@ export function DrawingCanvas({
         objectName === 'drawing-preview' ||
         objectName === 'wall-snap-highlight' ||
         objectName === 'wall-dimension' ||
+        objectName === 'wall-override-indicator' ||
         objectName === 'room-tag';
       if (isNonInteractive) {
         obj.selectable = false;
@@ -461,20 +493,40 @@ export function DrawingCanvas({
 
     clearRenderedWalls(canvas);
     visibleWalls.forEach((wall) => {
-      const { wallBody, dimensionLabel } = createWallRenderObjects(wall, displayUnit, {
-        selected: selectedWallIdSet.has(wall.id) || selectedRoomBoundarySet.has(wall.id),
-      });
+      const { wallBody, dimensionLabel, overrideMarker } = createWallRenderObjects(
+        wall,
+        displayUnit,
+        wallTypeRegistry,
+        {
+          selected: selectedWallIdSet.has(wall.id) || selectedRoomBoundarySet.has(wall.id),
+        }
+      );
       wallBody.selectable = allowSelection;
       wallBody.evented = allowSelection;
       dimensionLabel.selectable = false;
       dimensionLabel.evented = false;
       canvas.add(wallBody);
       canvas.add(dimensionLabel);
+      if (overrideMarker) {
+        overrideMarker.selectable = false;
+        overrideMarker.evented = false;
+        canvas.add(overrideMarker);
+      }
     });
 
     bringTransientOverlaysToFront(canvas);
     canvas.requestRenderAll();
-  }, [walls, rooms, selectedIds, displayUnit, tool, isSpacePressed, wallSpatialIndex, visibleSceneBounds]);
+  }, [
+    walls,
+    rooms,
+    selectedIds,
+    displayUnit,
+    tool,
+    isSpacePressed,
+    wallSpatialIndex,
+    visibleSceneBounds,
+    wallTypeRegistry,
+  ]);
 
   useEffect(() => {
     const canvas = fabricRef.current;
@@ -559,6 +611,30 @@ export function DrawingCanvas({
   }, [tool, endWallChain, clearRoomPolygonState]);
 
   useEffect(() => {
+    if (tool === 'room') {
+      setRoomDrawMode('rectangle');
+    }
+  }, [tool]);
+
+  useEffect(() => {
+    const handleRoomToolActivate = () => {
+      setRoomDrawMode('rectangle');
+    };
+
+    if (typeof window === 'undefined') return;
+    window.addEventListener(
+      'smart-drawing:room-tool-activate',
+      handleRoomToolActivate as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        'smart-drawing:room-tool-activate',
+        handleRoomToolActivate as EventListener
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     if (tool === 'select' && !isSpacePressed) return;
     setHoveredRoomInfo(null);
     setHoveredElement(null);
@@ -624,6 +700,26 @@ export function DrawingCanvas({
       window.removeEventListener('keydown', handleDeleteKey);
     };
   }, [selectedIds, deleteSelected]);
+
+  useEffect(() => {
+    const handleWallTypeShortcut = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (isEditableElement(event.target)) return;
+      const keyIndex = Number.parseInt(event.key, 10);
+      if (!Number.isFinite(keyIndex) || keyIndex < 1 || keyIndex > BUILT_IN_WALL_TYPE_IDS.length) {
+        return;
+      }
+      const wallTypeId = BUILT_IN_WALL_TYPE_IDS[keyIndex - 1];
+      if (!wallTypeId) return;
+      event.preventDefault();
+      setActiveWallTypeId(wallTypeId);
+    };
+
+    window.addEventListener('keydown', handleWallTypeShortcut);
+    return () => {
+      window.removeEventListener('keydown', handleWallTypeShortcut);
+    };
+  }, [setActiveWallTypeId]);
 
   useEffect(() => {
     if (tool !== 'room') return;
@@ -961,7 +1057,7 @@ export function DrawingCanvas({
             canvas,
             chainStart,
             targetPoint,
-            WALL_DEFAULT_THICKNESS_MM,
+            activeWallType.totalThickness,
             displayUnit
           );
         } else {
@@ -989,6 +1085,7 @@ export function DrawingCanvas({
       resolvedGridSize,
       setPanOffset,
       displayUnit,
+      activeWallType.totalThickness,
       isSpacePressed,
       originOffset.x,
       originOffset.y,
@@ -1485,6 +1582,37 @@ export function DrawingCanvas({
     [addSketch]
   );
 
+  const createCustomWallType = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const rawName = window.prompt('New wall type name', `${activeWallType.name} (Custom)`);
+    const nextName = rawName?.trim();
+    if (!nextName) return;
+
+    const slug = nextName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'custom-wall';
+    const id = `${slug}-${Date.now().toString(36)}`;
+
+    const customTypes = wallTypeRegistry.filter(
+      (wallType) => !BUILT_IN_WALL_TYPE_IDS.includes(wallType.id)
+    );
+
+    const customWallType: WallTypeDefinition = {
+      ...activeWallType,
+      id,
+      name: nextName,
+      layers: activeWallType.layers.map((layer, index) => ({
+        ...layer,
+        id: generateId(),
+        order: index,
+      })),
+    };
+
+    setWallTypeRegistry([...customTypes, customWallType]);
+    setActiveWallTypeId(id);
+  }, [activeWallType, wallTypeRegistry, setWallTypeRegistry, setActiveWallTypeId]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -1524,35 +1652,81 @@ export function DrawingCanvas({
         <canvas ref={canvasRef} className="relative z-[2] block" />
       </div>
 
+      {(tool === 'wall' || tool === 'room') && (
+        <div className="absolute right-3 top-3 z-[30] max-h-[60vh] w-72 overflow-y-auto rounded-lg border border-slate-300/80 bg-white/95 p-2 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Wall Type
+            </span>
+            <button
+              type="button"
+              onClick={createCustomWallType}
+              className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 transition-colors hover:border-blue-400 hover:text-blue-700"
+              title="Create custom wall type"
+            >
+              + Custom
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {wallTypeRegistry.map((wallType, index) => {
+              const isActive = wallType.id === activeWallTypeId;
+              return (
+                <button
+                  key={wallType.id}
+                  type="button"
+                  onClick={() => setActiveWallTypeId(wallType.id)}
+                  className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${
+                    isActive
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-300/80 bg-white hover:border-slate-400'
+                  }`}
+                >
+                  <div className="h-10 w-5 overflow-hidden rounded-sm border border-slate-300/80">
+                    {wallType.layers.map((layer) => {
+                      const ratio = wallType.totalThickness > 0
+                        ? (layer.thickness / wallType.totalThickness) * 100
+                        : 0;
+                      return (
+                        <div
+                          key={layer.id}
+                          style={{
+                            height: `${Math.max(ratio, 4)}%`,
+                            backgroundColor: layer.color || '#d1d5db',
+                          }}
+                          title={`${layer.name} (${layer.thickness} mm)`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11px] font-semibold text-slate-700">
+                      {wallType.name}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {Math.round(wallType.totalThickness)} mm
+                      {index < 6 ? ` | Alt+${index + 1}` : ''}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {tool === 'room' && (
-        <div className="absolute left-3 top-3 z-[30] rounded-lg border border-slate-300/80 bg-white/95 p-1.5 shadow-sm">
-          <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Room Mode
-          </div>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setRoomDrawMode('rectangle')}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                roomDrawMode === 'rectangle'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+        <div className="absolute left-3 top-3 z-[30] rounded-lg border border-slate-300/80 bg-white/95 px-2 py-1.5 shadow-sm">
+          <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <span>Room Mode</span>
+            <select
+              value={roomDrawMode}
+              onChange={(event) => setRoomDrawMode(event.target.value as RoomDrawMode)}
+              className="h-6 rounded border border-slate-300 bg-white px-1.5 text-[11px] font-medium normal-case text-slate-700 outline-none focus:border-blue-400"
             >
-              Rectangle
-            </button>
-            <button
-              type="button"
-              onClick={() => setRoomDrawMode('polygon')}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                roomDrawMode === 'polygon'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Polygon
-            </button>
-          </div>
+              <option value="rectangle">Rectangle</option>
+              <option value="polygon">Polygon</option>
+            </select>
+          </label>
         </div>
       )}
 
@@ -1866,6 +2040,185 @@ function formatWallLength(lengthScenePx: number, unit: DisplayUnit = 'mm'): stri
   return formatDistance(mm, unit);
 }
 
+const WALL_PATTERN_SIZE = 16;
+const wallPatternSourceCache = new Map<string, HTMLCanvasElement>();
+
+function normalizeHexColor(value: string, fallback = '#9ca3af'): string {
+  if (!value) return fallback;
+  const trimmed = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const r = trimmed[1];
+    const g = trimmed[2];
+    const b = trimmed[3];
+    if (!r || !g || !b) return fallback;
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return fallback;
+}
+
+function tintHexColor(color: string, amount: number): string {
+  const normalized = normalizeHexColor(color);
+  const r = Number.parseInt(normalized.slice(1, 3), 16);
+  const g = Number.parseInt(normalized.slice(3, 5), 16);
+  const b = Number.parseInt(normalized.slice(5, 7), 16);
+  const clampChannel = (channel: number) => Math.max(0, Math.min(255, Math.round(channel + amount)));
+  return `rgb(${clampChannel(r)}, ${clampChannel(g)}, ${clampChannel(b)})`;
+}
+
+function withPatternAlpha(color: string, alpha: number): string {
+  const normalized = normalizeHexColor(color);
+  const r = Number.parseInt(normalized.slice(1, 3), 16);
+  const g = Number.parseInt(normalized.slice(3, 5), 16);
+  const b = Number.parseInt(normalized.slice(5, 7), 16);
+  const safeAlpha = Math.max(0, Math.min(alpha, 1));
+  return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+}
+
+function drawBrickPattern(ctx: CanvasRenderingContext2D, size: number, stroke: string): void {
+  const rowHeight = size / 4;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1;
+  for (let y = 0; y <= size; y += rowHeight) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(size, y);
+    ctx.stroke();
+  }
+  for (let y = 0; y < size; y += rowHeight) {
+    const offset = ((y / rowHeight) % 2) * (size / 4);
+    for (let x = offset; x <= size; x += size / 2) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, Math.min(size, y + rowHeight));
+      ctx.stroke();
+    }
+  }
+}
+
+function drawPattern(textureId: string, ctx: CanvasRenderingContext2D, size: number, baseColor: string): void {
+  ctx.fillStyle = tintHexColor(baseColor, 24);
+  ctx.fillRect(0, 0, size, size);
+  const stroke = withPatternAlpha(baseColor, 0.55);
+
+  switch (textureId) {
+    case 'block-diagonal-crosshatch': {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      for (let i = -size; i <= size * 2; i += 6) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i - size, size);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(i, size);
+        ctx.lineTo(i - size, 0);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'brick-staggered':
+      drawBrickPattern(ctx, size, stroke);
+      break;
+    case 'concrete-stipple': {
+      ctx.fillStyle = withPatternAlpha(baseColor, 0.45);
+      for (let y = 2; y < size; y += 4) {
+        for (let x = 2; x < size; x += 4) {
+          ctx.beginPath();
+          ctx.arc(x + ((x + y) % 2), y, 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'block-diagonal-dots': {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      for (let i = -size; i <= size * 2; i += 7) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i - size, size);
+        ctx.stroke();
+      }
+      ctx.fillStyle = withPatternAlpha(baseColor, 0.42);
+      for (let y = 3; y < size; y += 6) {
+        for (let x = 3; x < size; x += 6) {
+          ctx.beginPath();
+          ctx.arc(x, y, 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'partition-parallel-lines': {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= size; x += 4) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, size);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'cavity-block-insulation': {
+      drawBrickPattern(ctx, size, withPatternAlpha(baseColor, 0.35));
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x <= size; x += 2) {
+        const y = size / 2 + (x % 4 === 0 ? -2 : 2);
+        if (x === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      break;
+    }
+    default: {
+      ctx.strokeStyle = withPatternAlpha(baseColor, 0.45);
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= size; x += 5) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, size);
+        ctx.stroke();
+      }
+      break;
+    }
+  }
+}
+
+function getWallPatternSource(textureId: string, baseColor: string): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const safeColor = normalizeHexColor(baseColor, '#9ca3af');
+  const key = `${textureId}:${safeColor}`;
+  const cached = wallPatternSourceCache.get(key);
+  if (cached) return cached;
+
+  const patternCanvas = document.createElement('canvas');
+  patternCanvas.width = WALL_PATTERN_SIZE;
+  patternCanvas.height = WALL_PATTERN_SIZE;
+  const ctx = patternCanvas.getContext('2d');
+  if (!ctx) return null;
+
+  drawPattern(textureId, ctx, WALL_PATTERN_SIZE, safeColor);
+  wallPatternSourceCache.set(key, patternCanvas);
+  return patternCanvas;
+}
+
+function createWallFillStyle(wall: Wall2D, wallTypeRegistry: WallTypeDefinition[]): string | fabric.Pattern {
+  const wallType = getWallTypeById(wall.wallTypeId, wallTypeRegistry);
+  const layers = resolveWallLayers(wall, wallTypeRegistry);
+  const coreLayer = layers.find((layer) => layer.isCore) ?? layers[0];
+  const baseColor = wall.color ?? coreLayer?.color ?? wallType.coreColor ?? WALL_DEFAULT_COLOR;
+  const source = getWallPatternSource(wallType.planTextureId, baseColor);
+  if (!source) return baseColor;
+  return new fabric.Pattern({ source, repeat: 'repeat' });
+}
+
 interface WallRenderOptions {
   selected?: boolean;
 }
@@ -1873,19 +2226,22 @@ interface WallRenderOptions {
 function createWallRenderObjects(
   wall: Wall2D,
   unit: DisplayUnit,
+  wallTypeRegistry: WallTypeDefinition[],
   options: WallRenderOptions = {}
 ): {
   wallBody: fabric.Object;
   dimensionLabel: fabric.Object;
+  overrideMarker: fabric.Object | null;
 } {
   const thicknessPx = wallThicknessToCanvasPx(wall.thickness);
   const polygonPoints = createWallPolygonPoints(wall.start, wall.end, thicknessPx);
   const isSelected = options.selected === true;
+  const fillStyle = createWallFillStyle(wall, wallTypeRegistry);
 
   let wallBody: fabric.Object;
   if (polygonPoints) {
     wallBody = new fabric.Polygon(polygonPoints, {
-      fill: wall.color || WALL_DEFAULT_COLOR,
+      fill: fillStyle,
       stroke: isSelected ? '#2563eb' : '#475569',
       strokeWidth: isSelected ? 2 : 1,
       objectCaching: false,
@@ -1897,7 +2253,7 @@ function createWallRenderObjects(
       left: wall.start.x - thicknessPx / 2,
       top: wall.start.y - thicknessPx / 2,
       radius: thicknessPx / 2,
-      fill: wall.color || WALL_DEFAULT_COLOR,
+      fill: fillStyle,
       stroke: isSelected ? '#2563eb' : '#475569',
       strokeWidth: isSelected ? 2 : 1,
       objectCaching: false,
@@ -1932,7 +2288,43 @@ function createWallRenderObjects(
     name: 'wall-dimension',
   });
 
-  return { wallBody, dimensionLabel };
+  let overrideMarker: fabric.Object | null = null;
+  if (wall.isWallTypeOverride) {
+    const markerRadius = 7;
+    const markerCircle = new fabric.Circle({
+      radius: markerRadius,
+      fill: 'rgba(234, 88, 12, 0.92)',
+      stroke: '#c2410c',
+      strokeWidth: 1,
+      originX: 'center',
+      originY: 'center',
+      left: 0,
+      top: 0,
+    });
+    const markerText = new fabric.Text('!', {
+      textAlign: 'center',
+      originX: 'center',
+      originY: 'center',
+      fill: '#fff',
+      fontSize: 10,
+      fontWeight: 'bold',
+      left: 0,
+      top: 0.5,
+    });
+    overrideMarker = new fabric.Group([markerCircle, markerText], {
+      left: midX + 10,
+      top: midY - 10,
+      originX: 'center',
+      originY: 'center',
+      selectable: false,
+      evented: false,
+      objectCaching: false,
+    });
+    (overrideMarker as unknown as { name?: string }).name = 'wall-override-indicator';
+    (overrideMarker as unknown as { wallId?: string }).wallId = wall.id;
+  }
+
+  return { wallBody, dimensionLabel, overrideMarker };
 }
 
 function clearRenderedWalls(canvas: fabric.Canvas): void {
@@ -1940,7 +2332,11 @@ function clearRenderedWalls(canvas: fabric.Canvas): void {
     .getObjects()
     .filter((obj) => {
       const name = (obj as unknown as { name?: string }).name;
-      return name === 'wall-render' || name === 'wall-dimension';
+      return (
+        name === 'wall-render' ||
+        name === 'wall-dimension' ||
+        name === 'wall-override-indicator'
+      );
     });
   wallObjects.forEach((obj) => canvas.remove(obj));
 }
@@ -2757,16 +3153,42 @@ function renderWallPreview(
 function createWallSegment(
   start: Point2D,
   end: Point2D,
-  options: Partial<Pick<Wall2D, 'thickness' | 'height' | 'wallType' | 'material' | 'color' | 'layer' | 'openings'>> = {}
+  options: Partial<
+    Pick<
+      Wall2D,
+      | 'thickness'
+      | 'height'
+      | 'wallType'
+      | 'wallTypeId'
+      | 'wallLayers'
+      | 'isWallTypeOverride'
+      | 'material'
+      | 'color'
+      | 'layer'
+      | 'openings'
+    >
+  > = {}
 ): Wall2D {
   const wallType: WallType = options.wallType ?? 'interior';
+  const wallLayers = options.wallLayers?.map((layer, index) => ({
+    ...layer,
+    id: generateId(),
+    order: index,
+  }));
+  const layerDerivedThickness = wallLayers?.reduce(
+    (sum, layer) => sum + Math.max(layer.thickness, 0),
+    0
+  );
   return {
     id: generateId(),
     start,
     end,
-    thickness: options.thickness ?? WALL_DEFAULT_THICKNESS_MM,
+    thickness: options.thickness ?? layerDerivedThickness ?? WALL_DEFAULT_THICKNESS_MM,
     height: options.height ?? WALL_DEFAULT_HEIGHT_MM,
     wallType,
+    wallTypeId: options.wallTypeId,
+    wallLayers,
+    isWallTypeOverride: options.isWallTypeOverride,
     material: options.material ?? WALL_DEFAULT_MATERIAL,
     color: options.color ?? WALL_DEFAULT_COLOR,
     layer: options.layer ?? 'default',
@@ -2791,6 +3213,16 @@ function splitWallAtPoint(
   const layer = wall.layer ?? fallbackLayer;
   const firstId = generateId();
   const secondId = generateId();
+  const clonedWallLayers = wall.wallLayers?.map((wallLayer, index) => ({
+    ...wallLayer,
+    id: generateId(),
+    order: index,
+  }));
+  const clonedWallLayersSecond = wall.wallLayers?.map((wallLayer, index) => ({
+    ...wallLayer,
+    id: generateId(),
+    order: index,
+  }));
   const firstOpenings: Wall2D['openings'] = [];
   const secondOpenings: Wall2D['openings'] = [];
   const safeT = Math.max(0.001, Math.min(0.999, t));
@@ -2813,10 +3245,13 @@ function splitWallAtPoint(
     });
   });
 
-  const commonProps: Omit<Wall2D, 'id' | 'start' | 'end' | 'openings'> = {
+  const commonProps = {
     thickness: wall.thickness,
     height: wall.height,
     wallType: wall.wallType,
+    wallTypeId: wall.wallTypeId,
+    wallLayers: clonedWallLayers,
+    isWallTypeOverride: wall.isWallTypeOverride,
     material: wall.material ?? WALL_DEFAULT_MATERIAL,
     color: wall.color ?? WALL_DEFAULT_COLOR,
     layer,
@@ -2835,6 +3270,7 @@ function splitWallAtPoint(
     start: { ...splitPoint },
     end: { ...wall.end },
     ...commonProps,
+    wallLayers: clonedWallLayersSecond,
     openings: secondOpenings,
   };
 
@@ -3030,7 +3466,20 @@ function addEdgeWithWallReuse(
   start: Point2D,
   end: Point2D,
   layerId: string,
-  tolerance: number
+  tolerance: number,
+  wallDefaults: Partial<
+    Pick<
+      Wall2D,
+      | 'thickness'
+      | 'height'
+      | 'wallType'
+      | 'wallTypeId'
+      | 'wallLayers'
+      | 'isWallTypeOverride'
+      | 'material'
+      | 'color'
+    >
+  > = {}
 ): Wall2D[] {
   if (distanceBetween(start, end) <= 0.001) return sourceWalls;
 
@@ -3070,6 +3519,7 @@ function addEdgeWithWallReuse(
     const segmentEnd = pointAtDistance(start, unit, segment.end);
     walls.push(
       createWallSegment(segmentStart, segmentEnd, {
+        ...wallDefaults,
         layer: layerId,
       })
     );
