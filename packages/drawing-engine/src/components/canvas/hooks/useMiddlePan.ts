@@ -5,6 +5,7 @@
  */
 
 import { useRef, useCallback } from 'react';
+
 import type { Point2D } from '../../../types';
 
 export interface MiddlePanState {

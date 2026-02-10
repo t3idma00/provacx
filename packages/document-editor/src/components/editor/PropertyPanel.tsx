@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import {
   Trash2,
   Copy,
@@ -13,6 +12,8 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import React from 'react';
+
 import type { EditorElement, TextElement, TextStyle } from '../../types';
 
 export interface PropertyPanelProps {

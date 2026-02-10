@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 import { trpc } from "@/lib/trpc";
@@ -12,6 +12,17 @@ const DrawingEditorWrapper = dynamic(
   () => import("@/components/editors/DrawingEditorWrapper"),
   { ssr: false, loading: () => <CanvasLoading /> }
 );
+
+function parseCanvasData(input: unknown): unknown {
+  if (!input) return undefined;
+  if (typeof input !== "string") return input;
+
+  try {
+    return JSON.parse(input);
+  } catch {
+    return undefined;
+  }
+}
 
 function CanvasLoading() {
   return (
@@ -30,16 +41,21 @@ export default function DrawingPage() {
   const [mounted, setMounted] = useState(false);
 
   // Get project details
-  const { data: project, isLoading } = trpc.project.getById.useQuery(
+  const { data: project, isLoading: projectLoading } = trpc.project.getById.useQuery(
     { id: projectId },
     { enabled: !!projectId }
   );
+  const { data: drawings, isLoading: drawingsLoading } =
+    trpc.drawing.listByProject.useQuery(
+      { projectId },
+      { enabled: !!projectId }
+    );
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (isLoading || !mounted) {
+  if (projectLoading || drawingsLoading || !mounted) {
     return <CanvasLoading />;
   }
 
@@ -56,5 +72,13 @@ export default function DrawingPage() {
     );
   }
 
-  return <DrawingEditorWrapper projectId={projectId} projectName={project.name} />;
+  const latestDrawing = drawings?.[0];
+
+  return (
+    <DrawingEditorWrapper
+      projectId={projectId}
+      projectName={project.name}
+      initialData={parseCanvasData(latestDrawing?.canvasData)}
+    />
+  );
 }

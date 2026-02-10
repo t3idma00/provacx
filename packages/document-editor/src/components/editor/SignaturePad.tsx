@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
 import { X, RotateCcw, Check, Pen } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
 
 export interface SignaturePadProps {
   onSave: (signatureData: string, signedBy?: string) => void;

@@ -12,7 +12,8 @@
   },
   "scripts": {
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "typecheck": "pnpm run type-check"
   },
   "dependencies": {
     "@react-pdf/renderer": "^3.4.4",
@@ -22,6 +23,7 @@
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
     "@types/react": "^18.2.0",
+    "eslint": "^8.57.0",
     "react": "^18.2.0",
     "typescript": "^5.4.5"
   },

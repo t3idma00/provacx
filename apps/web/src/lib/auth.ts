@@ -3,6 +3,7 @@
  */
 
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@provacx/database";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import type { NextAuthConfig, NextAuthResult } from "next-auth";
@@ -10,7 +11,6 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { z } from "zod";
 
-import { prisma } from "@provacx/database";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -28,10 +28,18 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const googleEnabled = Boolean(googleClientId && googleClientSecret);
 
-if (authDebug && !authSecret) {
-  console.warn(
-    "Auth secret is missing. Set AUTH_SECRET (recommended) or NEXTAUTH_SECRET."
-  );
+if (!authSecret) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Missing auth secret. Set AUTH_SECRET (recommended) or NEXTAUTH_SECRET."
+    );
+  }
+
+  if (authDebug) {
+    console.warn(
+      "Auth secret is missing. Set AUTH_SECRET (recommended) or NEXTAUTH_SECRET."
+    );
+  }
 }
 
 if (authDebug && !googleEnabled) {

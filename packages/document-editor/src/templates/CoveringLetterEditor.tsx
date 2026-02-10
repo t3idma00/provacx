@@ -1,6 +1,33 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+
+// Import from document-editor package
+import {
+  Grid,
+  Rulers,
+  useRulerGutters,
+  AlignmentGuides,
+  HeaderFooterArea,
+  RichTextEditor,
+  SignaturePad,
+  Calculator,
+  PropertyPanel,
+  useEditorStore,
+  useAutoSave,
+  useSnap,
+  useKeyboardShortcuts,
+  exportToPDF,
+  exportToJSON,
+  importFromJSON,
+  PAGE_LAYOUTS,
+  defaultTextStyle,
+} from '@provacx/document-editor';
+import type {
+  EditorElement,
+  TextElement,
+  AlignmentGuide,
+  ToolType,
+} from '@provacx/document-editor';
 import {
   Download,
   Upload,
@@ -27,35 +54,40 @@ import {
   FileJson,
   Printer,
 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 
-// Import from document-editor package
-import {
-  Grid,
-  Rulers,
-  useRulerGutters,
-  AlignmentGuides,
-  HeaderFooterArea,
-  RichTextEditor,
-  SignaturePad,
-  Calculator,
-  PropertyPanel,
-  useEditorStore,
-  useAutoSave,
-  useSnap,
-  useKeyboardShortcuts,
-  exportToPDF,
-  exportToJSON,
-  importFromJSON,
-  PAGE_LAYOUTS,
-  defaultTextStyle,
-} from '@provacx/document-editor';
+function sanitizeRichTextHtml(html: string): string {
+  if (typeof window === 'undefined') {
+    return html;
+  }
 
-import type {
-  EditorElement,
-  TextElement,
-  AlignmentGuide,
-  ToolType,
-} from '@provacx/document-editor';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  doc
+    .querySelectorAll('script,iframe,object,embed,link,meta,style')
+    .forEach((node) => node.remove());
+
+  doc.querySelectorAll('*').forEach((node) => {
+    for (const attr of Array.from(node.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.trim();
+
+      if (name.startsWith('on')) {
+        node.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (
+        (name === 'src' || name === 'href' || name === 'xlink:href') &&
+        /^javascript:/i.test(value)
+      ) {
+        node.removeAttribute(attr.name);
+      }
+    }
+  });
+
+  return doc.body.innerHTML;
+}
 
 /**
  * HVAC Covering Letter Editor
@@ -598,6 +630,9 @@ export const CoveringLetterEditor: React.FC = () => {
       case 'text': {
         const textEl = element as TextElement;
         const style = textEl.textStyle || defaultTextStyle;
+        const safeRichContent = textEl.richContent
+          ? sanitizeRichTextHtml(textEl.richContent)
+          : null;
 
         if (isCurrentlyEditing) {
           return (
@@ -608,7 +643,13 @@ export const CoveringLetterEditor: React.FC = () => {
               <RichTextEditor
                 content={textEl.richContent || textEl.content}
                 onChange={(html: string, text: string) => {
-                  updateElement(element.id, { content: text, richContent: html } as Partial<TextElement>);
+                  updateElement(
+                    element.id,
+                    {
+                      content: text,
+                      richContent: sanitizeRichTextHtml(html),
+                    } as Partial<TextElement>
+                  );
                 }}
                 onBlur={() => {
                   stopEditing();
@@ -644,9 +685,9 @@ export const CoveringLetterEditor: React.FC = () => {
             }}
             onClick={() => selectElement(element.id)}
             onDoubleClick={() => handleElementDoubleClick(element.id)}
-            dangerouslySetInnerHTML={textEl.richContent ? { __html: textEl.richContent } : undefined}
+            dangerouslySetInnerHTML={safeRichContent ? { __html: safeRichContent } : undefined}
           >
-            {!textEl.richContent && textEl.content}
+            {!safeRichContent && textEl.content}
           </div>
         );
       }

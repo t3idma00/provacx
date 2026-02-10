@@ -8,8 +8,9 @@
  * - Wall segment commitment
  */
 
-import { useRef, useCallback } from 'react';
 import type { Canvas as FabricCanvas } from 'fabric';
+import { useRef, useCallback } from 'react';
+
 import type { Point2D, Wall2D, Room2D, WallTypeDefinition, DisplayUnit } from '../../../types';
 import { detectRoomsFromWallGraph, validateNestedRooms } from '../../../utils/room-detection';
 import { createWallFromTypeDefaults } from '../../../utils/wall-types';

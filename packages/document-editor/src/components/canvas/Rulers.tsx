@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
+
 import { GRID_CONSTANTS, type RulerMetrics, type RulerTick, type RulerTickData } from '../../types';
 
 export interface RulersProps {

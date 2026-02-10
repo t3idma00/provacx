@@ -6,6 +6,7 @@
  */
 
 import type { Point2D, Room2D, Wall2D } from '../types';
+
 import { generateId } from './geometry';
 
 const NODE_SNAP_TOLERANCE_PX = 0.5;

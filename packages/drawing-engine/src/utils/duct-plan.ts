@@ -22,6 +22,7 @@ import type {
   DuctShape,
   IndoorUnitType,
 } from '../types';
+
 import { generateId, distance, midpoint, normalOffset, calculatePolygonArea } from './geometry';
 
 // =============================================================================
@@ -65,7 +66,7 @@ interface RoutePoint {
   type: 'start' | 'junction' | 'end' | 'corner';
 }
 
-function planMainRoute(rooms: Room2D[], walls: Wall2D[]): RoutePoint[] {
+function planMainRoute(rooms: Room2D[], _walls: Wall2D[]): RoutePoint[] {
   if (rooms.length === 0) return [];
 
   // Find the centroid of all room centers
@@ -123,7 +124,7 @@ function planMainRoute(rooms: Room2D[], walls: Wall2D[]): RoutePoint[] {
 export function buildBranchRoute(
   junctionPoint: Point2D,
   targetPoint: Point2D,
-  walls: Wall2D[]
+  _walls: Wall2D[]
 ): Point2D[] {
   // Simple L-shaped routing
   const dx = Math.abs(targetPoint.x - junctionPoint.x);
@@ -249,14 +250,6 @@ function createIndoorUnits(rooms: Room2D[], walls: Wall2D[]): IndoorUnit2D[] {
 function calculateAirflowM3s(capacityKW: number): number {
   // Rough estimate: 0.05 m³/s per kW
   return capacityKW * 0.05;
-}
-
-function pathLength(path: Point2D[]): number {
-  let len = 0;
-  for (let i = 0; i < path.length - 1; i++) {
-    len += distance(path[i], path[i + 1]);
-  }
-  return len;
 }
 
 function createDuctSegments(

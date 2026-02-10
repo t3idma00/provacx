@@ -1,5 +1,5 @@
-import React from "react";
 import { View, Text, Image } from "@react-pdf/renderer";
+
 import { styles } from "../styles";
 import type { OrganizationInfo } from "../types";
 

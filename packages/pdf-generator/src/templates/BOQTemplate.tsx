@@ -1,9 +1,9 @@
-import React from "react";
 import { Document, Page, View, Text } from "@react-pdf/renderer";
-import { styles } from "../styles";
-import { Header } from "../components/Header";
+
 import { Footer } from "../components/Footer";
+import { Header } from "../components/Header";
 import { Table, formatCurrency, type TableColumn } from "../components/Table";
+import { styles } from "../styles";
 import type { OrganizationInfo, ProjectInfo, BOQSummary, ProposalTotals } from "../types";
 
 interface BOQTemplateProps {

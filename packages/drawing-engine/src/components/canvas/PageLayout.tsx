@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import type { Point2D } from '../../types';
 
 export interface PageLayoutProps {

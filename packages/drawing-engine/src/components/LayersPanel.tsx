@@ -6,8 +6,6 @@
 
 'use client';
 
-import React from 'react';
-import { useSmartDrawingStore } from '../store';
 import {
   Eye,
   EyeOff,
@@ -19,6 +17,9 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+import React from 'react';
+
+import { useSmartDrawingStore } from '../store';
 
 // =============================================================================
 // Types

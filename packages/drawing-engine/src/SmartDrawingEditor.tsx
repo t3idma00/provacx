@@ -7,21 +7,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as fabric from 'fabric';
-import {
-  DrawingCanvas,
-  Toolbar,
-  PropertiesPanel,
-  SymbolPalette,
-  LayersPanel,
-  RoomHierarchyPanel,
-  ZoomIndicator,
-  CoordinatesDisplay,
-} from './components';
-import { useSmartDrawingStore } from './store';
-import type { SymbolDefinition } from './data/symbol-library';
-import type { Point2D, DrawingTool, PageLayout } from './types';
 import {
   PanelLeftClose,
   PanelRightClose,
@@ -39,6 +25,22 @@ import {
   BoxSelect,
   Type,
 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+
+import {
+  DrawingCanvas,
+  Toolbar,
+  PropertiesPanel,
+  SymbolPalette,
+  LayersPanel,
+  RoomHierarchyPanel,
+  ZoomIndicator,
+  CoordinatesDisplay,
+} from './components';
+import type { SymbolDefinition } from './data/symbol-library';
+import { useSmartDrawingStore } from './store';
+import type { Point2D, DrawingTool, PageLayout } from './types';
+
 
 // =============================================================================
 // Types

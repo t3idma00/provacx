@@ -7,8 +7,9 @@
  * - Room commitment from vertices
  */
 
-import { useRef, useCallback } from 'react';
 import type { Canvas as FabricCanvas } from 'fabric';
+import { useRef, useCallback } from 'react';
+
 import type { Point2D, Wall2D, Room2D, WallTypeDefinition } from '../../../types';
 import { detectRoomsFromWallGraph, validateNestedRooms } from '../../../utils/room-detection';
 import { createWallFromTypeDefaults } from '../../../utils/wall-types';

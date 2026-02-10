@@ -1,8 +1,8 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/lib/auth";
 import AppRibbon from "@/components/navigation/AppRibbon";
+import { auth, signOut } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,

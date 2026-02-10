@@ -1,3 +1,4 @@
+import { OCRProcessor } from "./processor";
 import type {
   OCRResult,
   DrawingRecognitionResult,
@@ -7,7 +8,6 @@ import type {
   BoundingBox,
   ProgressCallback,
 } from "./types";
-import { OCRProcessor } from "./processor";
 
 // Dimension patterns
 const DIMENSION_PATTERNS = [
@@ -124,13 +124,18 @@ export class DrawingRecognizer {
     const dimensions: RecognizedDimension[] = [];
 
     for (const pattern of DIMENSION_PATTERNS) {
-      let match;
+      let match: RegExpExecArray | null;
       // Reset lastIndex for global regex
       pattern.lastIndex = 0;
 
       while ((match = pattern.exec(text)) !== null) {
-        const value = parseFloat(match[1]);
-        const unit = match[match.length - 1]?.toLowerCase() || "mm";
+        const valueRaw = match[1];
+        if (!valueRaw) {
+          continue;
+        }
+
+        const value = parseFloat(valueRaw);
+        const unit = (match[match.length - 1] ?? "mm").toLowerCase();
 
         if (!isNaN(value) && value > 0) {
           dimensions.push({
@@ -208,21 +213,30 @@ export class DrawingRecognizer {
       /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(mm)?/i
     );
     if (sizeMatch) {
-      properties.width = parseFloat(sizeMatch[1]);
-      properties.height = parseFloat(sizeMatch[2]);
+      const [, widthRaw = "", heightRaw = ""] = sizeMatch;
+      if (widthRaw && heightRaw) {
+        properties.width = parseFloat(widthRaw);
+        properties.height = parseFloat(heightRaw);
+      }
     }
 
     // Extract diameter
     const diaMatch = text.match(/[Øø]?\s*(\d+(?:\.\d+)?)\s*(mm)?/i);
     if (diaMatch && !sizeMatch) {
-      properties.diameter = parseFloat(diaMatch[1]);
+      const [, diameterRaw = ""] = diaMatch;
+      if (diameterRaw) {
+        properties.diameter = parseFloat(diameterRaw);
+      }
     }
 
     // Extract angle for elbows
     if (elementType === "elbow") {
       const angleMatch = text.match(/(\d+)\s*°|deg/i);
       if (angleMatch) {
-        properties.angle = parseInt(angleMatch[1], 10);
+        const [, angleRaw = ""] = angleMatch;
+        if (angleRaw) {
+          properties.angle = parseInt(angleRaw, 10);
+        }
       }
     }
 

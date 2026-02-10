@@ -12,7 +12,8 @@
   },
   "scripts": {
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "typecheck": "pnpm run type-check"
   },
   "dependencies": {
     "tesseract.js": "^5.0.5",
@@ -23,6 +24,7 @@
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
     "@types/node": "^20.0.0",
+    "eslint": "^8.57.0",
     "typescript": "^5.4.5"
   }
 }

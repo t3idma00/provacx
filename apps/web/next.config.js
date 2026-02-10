@@ -1,16 +1,10 @@
 const path = require("path");
+const isStandaloneOutput = process.env.NEXT_OUTPUT_STANDALONE === "true";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: "standalone",
-  outputFileTracingRoot: path.join(__dirname, "../../"),
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  ...(isStandaloneOutput ? { output: "standalone" } : {}),
   transpilePackages: [
     "@provacx/api",
     "@provacx/database",
@@ -20,14 +14,17 @@ const nextConfig = {
     "@provacx/boq-engine",
     "@provacx/document-editor",
   ],
-  // Explicitly include Prisma engine files
-  outputFileTracingIncludes: {
-    "/api/**/*": ["./node_modules/.prisma/**/*"],
-    "/dashboard/**/*": ["./node_modules/.prisma/**/*"],
-    "/login": ["./node_modules/.prisma/**/*"],
-    "/register": ["./node_modules/.prisma/**/*"],
-    "/onboarding/**/*": ["./node_modules/.prisma/**/*"],
-    "/projects/**/*": ["./node_modules/.prisma/**/*"],
+  experimental: {
+    outputFileTracingRoot: path.join(__dirname, "../../"),
+    // Explicitly include Prisma engine files when tracing app routes.
+    outputFileTracingIncludes: {
+      "/api/**/*": ["./node_modules/.prisma/**/*"],
+      "/dashboard/**/*": ["./node_modules/.prisma/**/*"],
+      "/login": ["./node_modules/.prisma/**/*"],
+      "/register": ["./node_modules/.prisma/**/*"],
+      "/onboarding/**/*": ["./node_modules/.prisma/**/*"],
+      "/projects/**/*": ["./node_modules/.prisma/**/*"],
+    },
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

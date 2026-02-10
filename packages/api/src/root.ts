@@ -3,7 +3,6 @@
  * Combines all routers into a single app router
  */
 
-import { createTRPCRouter } from "./trpc";
 import {
   userRouter,
   organizationRouter,
@@ -13,6 +12,7 @@ import {
   pricingRouter,
   proposalRouter,
 } from "./routers";
+import { createTRPCRouter } from "./trpc";
 
 /**
  * Main app router with all sub-routers

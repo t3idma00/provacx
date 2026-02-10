@@ -16,13 +16,13 @@
     }
   },
   "scripts": {
-    "postinstall": "prisma generate --schema=./prisma/schema.prisma",
-    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "postinstall": "node ./scripts/prisma-generate-with-retry.mjs",
+    "db:generate": "node ./scripts/prisma-generate-with-retry.mjs",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint src --max-warnings 0",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -31,6 +31,8 @@
   "devDependencies": {
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
+    "@types/node": "^20.12.12",
+    "eslint": "^8.57.0",
     "prisma": "^5.14.0",
     "tsx": "^4.10.0",
     "typescript": "^5.4.5"

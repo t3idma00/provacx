@@ -5,6 +5,7 @@
  */
 
 import * as fabric from 'fabric';
+
 import type { Point2D, DrawingTool } from '../../types';
 
 // =============================================================================

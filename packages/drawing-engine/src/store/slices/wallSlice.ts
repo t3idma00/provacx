@@ -6,6 +6,7 @@
  */
 
 import type { StateCreator } from 'zustand';
+
 import type {
     Wall2D,
     WallLayer,

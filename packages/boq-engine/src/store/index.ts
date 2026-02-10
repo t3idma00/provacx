@@ -3,9 +3,10 @@
  * Zustand store for managing BOQ state
  */
 
+import { nanoid } from 'nanoid';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { nanoid } from 'nanoid';
+
 import type { BOQCategory, BOQItem, BOQData, BOQSummary } from '../types';
 
 interface BOQState {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+
 import { GRID_CONSTANTS } from '../../types';
 
 export interface GridProps {

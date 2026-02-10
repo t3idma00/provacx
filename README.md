@@ -234,7 +234,7 @@ ProvacX uses a modern, cloud-native stack with **all free-tier services** for co
 ### Prerequisites
 
 - **Node.js** 20 or higher
-- **pnpm** 9.0.0 or higher
+- **pnpm** 10.0.0 or higher
 - **PostgreSQL** (local, Docker, or hosted like Neon)
 
 ### Installation
@@ -248,11 +248,17 @@ cd provacx
 pnpm install
 
 # Set up environment variables
-cp apps/web/.env.example apps/web/.env.local
-cp packages/database/.env.example packages/database/.env
+pnpm setup:env
+# Edit these files with your values:
+# - apps/web/.env.local
+# - packages/database/.env
+
+# Validate your local setup
+pnpm setup:check
 
 # Generate Prisma client
 pnpm db:generate
+# If Windows shows EPERM on Prisma engine rename, stop running dev servers and retry.
 
 # Push schema to database
 pnpm db:push
@@ -268,6 +274,7 @@ Create `apps/web/.env.local` with the following:
 ```env
 # Required
 DATABASE_URL="postgresql://user:password@localhost:5432/provacx"
+AUTH_URL="http://localhost:3000"
 NEXTAUTH_URL="http://localhost:3000"
 AUTH_SECRET="your-secret-key-min-32-chars"
 
@@ -955,8 +962,9 @@ cd provacx
 pnpm install
 
 # 2. Configure environment
-cp apps/web/.env.example apps/web/.env.local
-# Edit .env.local with production values
+pnpm setup:env
+# Edit env files with production values
+pnpm setup:check
 
 # 3. Build
 pnpm db:generate
@@ -980,7 +988,8 @@ pnpm --filter @provacx/web start
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `NEXTAUTH_URL` | Application base URL | `https://provacx.com` |
+| `AUTH_URL` | Application base URL (preferred) | `https://provacx.com` |
+| `NEXTAUTH_URL` | Base URL fallback for compatibility | `https://provacx.com` |
 | `AUTH_SECRET` | Session encryption key (32+ chars) | `your-super-secret-key-here` |
 
 ### Optional Environment Variables

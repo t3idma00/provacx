@@ -1,3 +1,4 @@
+import { OCRProcessor } from "./processor";
 import type {
   OCRResult,
   OCRBlock,
@@ -10,7 +11,6 @@ import type {
   BoundingBox,
   ProgressCallback,
 } from "./types";
-import { OCRProcessor } from "./processor";
 
 // Common BOQ column headers
 const COMMON_HEADERS = {
@@ -21,6 +21,16 @@ const COMMON_HEADERS = {
   quantity: ["qty", "quantity", "quan", "q'ty"],
   rate: ["rate", "unit rate", "price", "unit price"],
   amount: ["amount", "total", "value", "sum"],
+};
+
+type ColumnMap = {
+  itemNo: number;
+  description: number;
+  specification: number;
+  unit: number;
+  quantity: number;
+  rate: number;
+  amount: number;
 };
 
 /**
@@ -76,7 +86,7 @@ export class BOQExtractor {
       );
 
       for (const block of tableBlocks) {
-        const table = this.parseTable(block, page.pageNumber);
+        const table = this.parseTable(block);
         if (table) {
           tables.push(table);
 
@@ -146,7 +156,7 @@ export class BOQExtractor {
   /**
    * Parse a text block into a table structure
    */
-  private parseTable(block: OCRBlock, pageNumber: number): ExtractedTable | null {
+  private parseTable(block: OCRBlock): ExtractedTable | null {
     const lines = block.lines;
     if (lines.length < 2) return null;
 
@@ -154,8 +164,7 @@ export class BOQExtractor {
     let headers: string[] = [];
     let columnCount = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const [i, line] of lines.entries()) {
       const cells = this.splitIntoCells(line.text);
 
       if (i === 0) {
@@ -222,8 +231,10 @@ export class BOQExtractor {
     }
 
     // Skip header row
-    for (let i = 1; i < table.rows.length; i++) {
-      const row = table.rows[i];
+    for (const [i, row] of table.rows.entries()) {
+      if (i === 0) {
+        continue;
+      }
       const cells = row.cells;
 
       try {
@@ -257,8 +268,8 @@ export class BOQExtractor {
   /**
    * Map header names to column indices
    */
-  private mapColumns(headers: string[]): Record<string, number> {
-    const map: Record<string, number> = {
+  private mapColumns(headers: string[]): ColumnMap {
+    const map: ColumnMap = {
       itemNo: -1,
       description: -1,
       specification: -1,
@@ -271,7 +282,10 @@ export class BOQExtractor {
     headers.forEach((header, index) => {
       const normalized = header.toLowerCase().trim();
 
-      for (const [key, patterns] of Object.entries(COMMON_HEADERS)) {
+      for (const [key, patterns] of Object.entries(COMMON_HEADERS) as [
+        keyof ColumnMap,
+        string[],
+      ][]) {
         if (patterns.some((p) => normalized.includes(p))) {
           map[key] = index;
           break;
@@ -318,13 +332,20 @@ export class BOQExtractor {
     const pattern =
       /(\d+(?:\.\d+)?)\s*[-.)]\s*(.+?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(LM|NOS|M|KG|SET|LOT|UNIT)/gi;
 
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
+      const [, itemNo = "", description = "", quantityRaw = "", unitRaw = "NOS"] =
+        match;
+      const quantity = parseFloat(quantityRaw);
+      if (!itemNo || !description || Number.isNaN(quantity)) {
+        continue;
+      }
+
       items.push({
-        itemNo: match[1],
-        description: match[2].trim(),
-        unit: match[4].toUpperCase(),
-        quantity: parseFloat(match[3]),
+        itemNo,
+        description: description.trim(),
+        unit: unitRaw.toUpperCase(),
+        quantity,
         confidence: block.confidence,
         sourceLocation: { page: pageNumber, bbox: block.bbox },
       });

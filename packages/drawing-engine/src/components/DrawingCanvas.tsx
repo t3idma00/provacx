@@ -7,8 +7,9 @@
 
 'use client';
 
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import * as fabric from 'fabric';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+
 import { useSmartDrawingStore } from '../store';
 import type { Point2D, Wall2D, Room2D, WallTypeDefinition } from '../types';
 import { generateId } from '../utils/geometry';

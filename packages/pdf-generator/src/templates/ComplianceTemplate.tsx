@@ -1,8 +1,8 @@
-import React from "react";
 import { Document, Page, View, Text } from "@react-pdf/renderer";
-import { styles } from "../styles";
-import { Header } from "../components/Header";
+
 import { Footer } from "../components/Footer";
+import { Header } from "../components/Header";
+import { styles } from "../styles";
 import type { ComplianceSheetData, ComplianceItem } from "../types";
 
 interface ComplianceTemplateProps {

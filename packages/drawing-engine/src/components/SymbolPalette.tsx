@@ -6,8 +6,9 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
 import { Search, ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+
 import {
   SYMBOL_LIBRARY,
   SYMBOL_CATEGORIES,

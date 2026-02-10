@@ -1,9 +1,9 @@
 "use client";
 
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
 const navItems = [
   { id: "projects", label: "Projects", emoji: "\u{1F4C1}", href: "/dashboard" },

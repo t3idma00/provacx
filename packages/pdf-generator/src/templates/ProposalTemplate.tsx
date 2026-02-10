@@ -1,10 +1,10 @@
-import React from "react";
 import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
-import { styles } from "../styles";
-import { Header } from "../components/Header";
+
 import { Footer } from "../components/Footer";
+import { Header } from "../components/Header";
 import { Table, formatCurrency, type TableColumn } from "../components/Table";
-import type { ProposalData, BOQItem } from "../types";
+import { styles } from "../styles";
+import type { ProposalData } from "../types";
 
 interface ProposalTemplateProps {
   data: ProposalData;
@@ -15,7 +15,7 @@ interface ProposalTemplateProps {
 export function ProposalTemplate({
   data,
   showCoverPage = true,
-  showTableOfContents = false,
+  showTableOfContents: _showTableOfContents = false,
 }: ProposalTemplateProps) {
   const { organization, project, coverLetter, boq, totals, terms, drawingThumbnail } =
     data;

@@ -5,14 +5,16 @@
  */
 
 import * as fabric from 'fabric';
+
 import type { Point2D, Room2D, DisplayUnit } from '../../types';
+
 import { formatDistance } from './formatting';
-import { clearDrawingPreview } from './wallRendering';
 import {
     calculatePolygonCentroid,
     calculatePolygonBounds,
     isPointInsidePolygon,
 } from './geometry';
+import { clearDrawingPreview } from './wallRendering';
 
 // Re-export from geometry for backward compatibility
 export { getRoomHierarchyDepth } from './geometry';

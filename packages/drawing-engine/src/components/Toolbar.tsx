@@ -6,7 +6,6 @@
 
 'use client';
 
-import React from 'react';
 import {
   MousePointer2,
   Hand,
@@ -26,6 +25,8 @@ import {
   Home,
   BoxSelect,
 } from 'lucide-react';
+import React from 'react';
+
 import { useSmartDrawingStore } from '../store';
 import type { DrawingTool } from '../types';
 

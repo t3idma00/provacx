@@ -5,6 +5,7 @@
  */
 
 import type { Point2D, Wall2D } from '../../types';
+
 import { distanceBetween, projectPointToSegment } from './geometry';
 
 // Re-export geometry functions for convenience

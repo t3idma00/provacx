@@ -34,18 +34,8 @@ interface DocumentEditorWrapperProps {
 export default function DocumentEditorWrapper({
   projectId,
   projectName,
-  initialData,
+  initialData: _initialData,
 }: DocumentEditorWrapperProps) {
-  const handleSave = async (data: unknown) => {
-    // Save to localStorage for now
-    localStorage.setItem(`provacx-document-data-${projectId}`, JSON.stringify({
-      data,
-      savedAt: new Date().toISOString(),
-    }));
-    // TODO: Implement save to database via tRPC
-    console.log("Saving document...", data);
-  };
-
   const handleExportPDF = async () => {
     // TODO: Implement PDF export
     console.log("Exporting PDF...");

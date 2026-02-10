@@ -5,7 +5,6 @@
 
 'use client';
 
-import React from 'react';
 import {
   Plus,
   Trash2,
@@ -13,6 +12,8 @@ import {
   ChevronRight,
   Copy,
 } from 'lucide-react';
+import React from 'react';
+
 import { useBOQStore } from '../store';
 import { BOQ_UNITS } from '../types';
 

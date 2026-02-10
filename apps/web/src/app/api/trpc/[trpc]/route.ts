@@ -1,6 +1,6 @@
+import { appRouter, createContext } from "@provacx/api";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
-import { appRouter, createContext } from "@provacx/api";
 
 import { auth } from "@/lib/auth";
 

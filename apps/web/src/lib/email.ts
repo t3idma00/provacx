@@ -5,6 +5,12 @@ function getAppBaseUrl(): string {
   const vercel = process.env.VERCEL_URL;
   if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
 
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Missing app base URL. Set AUTH_URL (preferred) or NEXTAUTH_URL."
+    );
+  }
+
   return "http://localhost:3000";
 }
 

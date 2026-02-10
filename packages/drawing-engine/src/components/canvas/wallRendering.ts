@@ -6,8 +6,10 @@
  */
 
 import * as fabric from 'fabric';
+
 import type { Point2D, Wall2D, DisplayUnit, WallTypeDefinition } from '../../types';
 import { getWallTypeById, resolveWallLayers } from '../../utils/wall-types';
+
 import { formatWallLength, normalizeHexColor, tintHexColor, withPatternAlpha } from './formatting';
 import { distanceBetween } from './snapping';
 import { wallThicknessToCanvasPx } from './spatial-index';

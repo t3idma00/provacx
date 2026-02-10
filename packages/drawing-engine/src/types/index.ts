@@ -284,7 +284,7 @@ export interface SymbolCategory {
   id: string;
   name: string;
   icon: ReactNode;
-  symbols: Symbol[];
+  symbols: symbol[];
 }
 
 export interface SymbolInstance2D {

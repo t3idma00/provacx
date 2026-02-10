@@ -1,13 +1,13 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { trpc } from "@/lib/trpc";
 import { useOrganization } from "@/lib/organization-context";
+import { trpc } from "@/lib/trpc";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "Organization name is required").max(100),
@@ -39,14 +39,11 @@ export default function OnboardingOrganizationPage() {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
   });
-
-  const name = watch("name");
 
   // Auto-generate slug from name
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

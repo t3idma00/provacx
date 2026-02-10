@@ -3,8 +3,9 @@
  * Handles unit rates and pricing rules
  */
 
-import { z } from "zod";
+import type { BOQCategory } from "@provacx/database";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import {
   createTRPCRouter,
@@ -31,7 +32,7 @@ export const pricingRouter = createTRPCRouter({
           organizationId: ctx.organizationId,
           isActive: true,
           ...(input.category && {
-            category: input.category as keyof typeof import("@provacx/database").BOQCategory,
+            category: input.category as BOQCategory,
           }),
           ...(input.search && {
             OR: [

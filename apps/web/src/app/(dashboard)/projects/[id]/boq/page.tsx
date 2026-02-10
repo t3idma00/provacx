@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 import { trpc } from "@/lib/trpc";

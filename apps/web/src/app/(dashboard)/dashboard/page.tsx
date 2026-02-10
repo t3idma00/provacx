@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
-import { trpc } from "@/lib/trpc";
 import { useOrganization } from "@/lib/organization-context";
+import { trpc } from "@/lib/trpc";
 
 export default function DashboardPage() {
   const { data: organizations, isLoading } = trpc.user.getOrganizations.useQuery();

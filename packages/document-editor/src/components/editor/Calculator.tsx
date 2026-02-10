@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
 import { X, Copy, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
 
 export interface CalculatorProps {
   onInsert: (value: string) => void;

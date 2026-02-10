@@ -3,8 +3,9 @@
  * Handles project CRUD operations
  */
 
-import { z } from "zod";
+import type { Prisma } from "@provacx/database";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import {
   createTRPCRouter,
@@ -134,9 +135,14 @@ export const projectRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { layoutSettings, ...restInput } = input;
+
       const project = await ctx.prisma.project.create({
         data: {
-          ...input,
+          ...restInput,
+          ...(layoutSettings !== undefined && {
+            layoutSettings: layoutSettings as Prisma.InputJsonValue,
+          }),
           organizationId: ctx.organizationId,
           createdById: ctx.user!.id,
         },

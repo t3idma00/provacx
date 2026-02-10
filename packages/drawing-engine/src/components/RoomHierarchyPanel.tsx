@@ -6,8 +6,9 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Eye, EyeOff, FolderTree, Pencil, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { useSmartDrawingStore } from '../store';
 import type { Room2D } from '../types';
 

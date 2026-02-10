@@ -3,8 +3,9 @@
  * Handles Bill of Quantities operations
  */
 
-import { z } from "zod";
+import type { BOQCategory } from "@provacx/database";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import {
   createTRPCRouter,
@@ -41,17 +42,17 @@ export const boqRouter = createTRPCRouter({
       const items = await ctx.prisma.bOQItem.findMany({
         where: {
           projectId: input.projectId,
-          ...(input.category && { category: input.category as keyof typeof import("@provacx/database").BOQCategory }),
+          ...(input.category && { category: input.category as BOQCategory }),
         },
         orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
       });
 
       // Group by category
       const grouped = items.reduce((acc, item) => {
-        if (!acc[item.category]) {
-          acc[item.category] = [];
-        }
-        acc[item.category].push(item);
+        const categoryKey = item.category;
+        const bucket = acc[categoryKey] ?? [];
+        bucket.push(item);
+        acc[categoryKey] = bucket;
         return acc;
       }, {} as Record<string, typeof items>);
 
@@ -262,11 +263,15 @@ export const boqRouter = createTRPCRouter({
         const category = mapTypeToCategory(group.type);
         const description = generateDescription(group.type, props);
         const { quantity, unit } = calculateQuantity(group.type, props, group.components.length);
+        const firstComponent = group.components[0];
+        if (!firstComponent) {
+          continue;
+        }
 
         const item = await ctx.prisma.bOQItem.create({
           data: {
             projectId: drawing.project.id,
-            componentId: group.components[0].id,
+            componentId: firstComponent.id,
             category,
             description,
             unit,

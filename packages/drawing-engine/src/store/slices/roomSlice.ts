@@ -6,6 +6,7 @@
  */
 
 import type { StateCreator } from 'zustand';
+
 import type { Room2D, Wall2D } from '../../types';
 import { applyNestedRoomHierarchy, detectRoomsFromWallGraph } from '../../utils/room-detection';
 import { sortRoomsForDisplay } from '../helpers';

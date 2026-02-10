@@ -7,10 +7,11 @@
  * - Room hover tooltips
  */
 
-import { useRef, useCallback } from 'react';
 import type { Canvas as FabricCanvas, Object as FabricObject, Circle as FabricCircle } from 'fabric';
-import type { Point2D, Wall2D, Room2D } from '../../../types';
+import { useRef, useCallback } from 'react';
+
 import { useSmartDrawingStore } from '../../../store';
+import type { Point2D, Wall2D, Room2D } from '../../../types';
 import { detectRoomsFromWallGraph, validateNestedRooms } from '../../../utils/room-detection';
 import {
     distanceBetween,

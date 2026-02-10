@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
+
 import type { DisplayUnit, Point2D } from '../../types';
+
 import { getAdaptiveSteps, PX_TO_MM } from './scale';
 
 interface RulerTick {

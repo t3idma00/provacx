@@ -6,6 +6,7 @@
  */
 
 import type { StateCreator } from 'zustand';
+
 import type {
     DrawingTool,
     Wall2D,

@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+
 import type {
   Point2D,
   DisplayUnit,
@@ -31,9 +32,9 @@ import type {
   SplineSettings,
   SplineMethod,
 } from '../types';
-import { DEFAULT_SPLINE_SETTINGS } from '../utils/spline';
 import { generateId } from '../utils/geometry';
 import { applyNestedRoomHierarchy, detectRoomsFromWallGraph } from '../utils/room-detection';
+import { DEFAULT_SPLINE_SETTINGS } from '../utils/spline';
 import {
   DEFAULT_WALL_TYPE_ID,
   addWallLayer,
@@ -49,6 +50,11 @@ import {
 
 // Import from extracted modules
 import {
+  DEFAULT_PAGE_CONFIG,
+  DEFAULT_ELEMENT_SETTINGS,
+  DEFAULT_LAYERS,
+} from './defaults';
+import {
   createEmptyHistorySnapshot,
   createHistoryEntry,
   createHistorySnapshot,
@@ -56,11 +62,6 @@ import {
   sortRoomsForDisplay,
   withRebuiltAdjacency,
 } from './helpers';
-import {
-  DEFAULT_PAGE_CONFIG,
-  DEFAULT_ELEMENT_SETTINGS,
-  DEFAULT_LAYERS,
-} from './defaults';
 
 // =============================================================================
 // Store Interface

@@ -1,6 +1,7 @@
+import { nanoid } from 'nanoid';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { nanoid } from 'nanoid';
+
 import type {
   EditorElement,
   EditorState,

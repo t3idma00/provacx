@@ -1,8 +1,8 @@
+import { prisma } from "@provacx/database";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@provacx/database";
 
 import { sendEmailVerificationEmail } from "@/lib/email";
 import { consumeRateLimit } from "@/lib/rate-limit";

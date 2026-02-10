@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
+
 import { useEditorStore } from '../store/editorStore';
 
 export interface UseKeyboardShortcutsOptions {

@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
+
 import type { Point2D } from '../../types';
+
 import { getAdaptiveSteps } from './scale';
 
 export interface GridProps {

@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { useState, type ReactNode } from "react";
 
-import { trpc, createTRPCClient } from "@/lib/trpc";
 import { OrganizationProvider } from "@/lib/organization-context";
+import { trpc, createTRPCClient } from "@/lib/trpc";
 
 interface ProvidersProps {
   children: ReactNode;

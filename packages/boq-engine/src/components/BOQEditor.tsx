@@ -6,11 +6,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { BOQHeader } from './BOQHeader';
-import { BOQTable } from './BOQTable';
-import { BOQSidebar } from './BOQSidebar';
+
 import { useBOQStore } from '../store';
 import type { BOQEditorProps } from '../types';
+
+import { BOQHeader } from './BOQHeader';
+import { BOQSidebar } from './BOQSidebar';
+import { BOQTable } from './BOQTable';
 
 export function BOQEditor({
   projectId,

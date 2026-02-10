@@ -3,8 +3,9 @@
  * Handles drawing canvas operations
  */
 
-import { z } from "zod";
+import type { ComponentType, ConnectionType, Prisma } from "@provacx/database";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import {
   createTRPCRouter,
@@ -119,7 +120,7 @@ export const drawingRouter = createTRPCRouter({
           name: input.name,
           description: input.description,
           viewType: input.viewType,
-          canvasData: input.canvasData,
+          canvasData: input.canvasData as Prisma.InputJsonValue,
         },
       });
     }),
@@ -140,6 +141,7 @@ export const drawingRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const { canvasData, ...restData } = data;
 
       // Verify drawing belongs to organization
       const drawing = await ctx.prisma.drawing.findUnique({
@@ -157,7 +159,10 @@ export const drawingRouter = createTRPCRouter({
       return ctx.prisma.drawing.update({
         where: { id },
         data: {
-          ...data,
+          ...restData,
+          ...(canvasData !== undefined && {
+            canvasData: canvasData as Prisma.InputJsonValue,
+          }),
           version: { increment: 1 },
         },
       });
@@ -226,10 +231,10 @@ export const drawingRouter = createTRPCRouter({
       return ctx.prisma.drawingComponent.create({
         data: {
           drawingId: input.drawingId,
-          type: input.type as keyof typeof import("@provacx/database").ComponentType,
+          type: input.type as ComponentType,
           name: input.name,
-          properties: input.properties,
-          position: input.position,
+          properties: input.properties as Prisma.InputJsonValue,
+          position: input.position as Prisma.InputJsonValue,
           layerId: input.layerId,
           groupId: input.groupId,
         },
@@ -257,6 +262,7 @@ export const drawingRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const { properties, position, ...restData } = data;
 
       // Verify component belongs to organization
       const component = await ctx.prisma.drawingComponent.findUnique({
@@ -277,7 +283,15 @@ export const drawingRouter = createTRPCRouter({
 
       return ctx.prisma.drawingComponent.update({
         where: { id },
-        data,
+        data: {
+          ...restData,
+          ...(properties !== undefined && {
+            properties: properties as Prisma.InputJsonValue,
+          }),
+          ...(position !== undefined && {
+            position: position as Prisma.InputJsonValue,
+          }),
+        },
       });
     }),
 
@@ -343,8 +357,8 @@ export const drawingRouter = createTRPCRouter({
           drawingId: input.drawingId,
           fromComponentId: input.fromComponentId,
           toComponentId: input.toComponentId,
-          connectionType: input.connectionType as keyof typeof import("@provacx/database").ConnectionType,
-          properties: input.properties,
+          connectionType: input.connectionType as ConnectionType,
+          properties: input.properties as Prisma.InputJsonValue,
         },
       });
     }),

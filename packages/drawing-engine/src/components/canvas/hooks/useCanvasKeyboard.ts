@@ -9,6 +9,7 @@
  */
 
 import { useEffect } from 'react';
+
 import type { DrawingTool } from '../../../types';
 import { BUILT_IN_WALL_TYPE_IDS } from '../../../utils/wall-types';
 import { isEditableElement } from '../toolUtils';

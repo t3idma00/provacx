@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint src --max-warnings 0",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -29,6 +29,8 @@
   "devDependencies": {
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
+    "@types/node": "^20.12.12",
+    "eslint": "^8.57.0",
     "typescript": "^5.4.5"
   }
 }

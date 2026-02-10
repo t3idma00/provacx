@@ -46,6 +46,8 @@ export interface Context {
  */
 export async function createContext(opts: CreateContextOptions): Promise<Context> {
   let user: User | null = null;
+  const requestedOrganizationId = opts.organizationId?.trim() || null;
+  let organizationId: string | null = null;
 
   if (opts.session?.user?.id) {
     user = await prisma.user.findUnique({
@@ -53,11 +55,41 @@ export async function createContext(opts: CreateContextOptions): Promise<Context
     });
   }
 
+  if (user) {
+    // Respect explicit organization selection only when the user is actually a member.
+    if (requestedOrganizationId) {
+      const selectedMembership = await prisma.organizationUser.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: user.id,
+            organizationId: requestedOrganizationId,
+          },
+        },
+        select: { organizationId: true },
+      });
+
+      if (selectedMembership) {
+        organizationId = selectedMembership.organizationId;
+      }
+    }
+
+    // Fallback to the first org membership when no valid org header is present.
+    if (!organizationId) {
+      const firstMembership = await prisma.organizationUser.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: "asc" },
+        select: { organizationId: true },
+      });
+
+      organizationId = firstMembership?.organizationId ?? null;
+    }
+  }
+
   return {
     prisma,
     session: opts.session,
     user,
-    organizationId: opts.organizationId ?? null,
+    organizationId,
     organizationRole: null, // Will be set by organizationProcedure
     platformAdmin: opts.platformAdmin ?? null,
   };

@@ -24,12 +24,13 @@
     }
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint src --max-warnings 0",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@provacx/eslint-config": "workspace:*",
     "@provacx/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
     "typescript": "^5.4.5"
   }
 }

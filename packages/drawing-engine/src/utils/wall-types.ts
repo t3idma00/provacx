@@ -13,6 +13,7 @@ import type {
   WallLayerThicknessConstraint,
   WallTypeDefinition,
 } from '../types';
+
 import { generateId } from './geometry';
 
 const DEFAULT_WALL_HEIGHT_MM = 2700;

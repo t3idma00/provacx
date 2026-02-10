@@ -6,6 +6,7 @@
 
 import type { Point2D, Wall2D, WallType } from '../../types';
 import { generateId } from '../../utils/geometry';
+
 import { distanceBetween, arePointsClose } from './geometry';
 
 // Re-export for convenience
@@ -293,7 +294,7 @@ function splitWallsAtPoint(
     fallbackLayer: string,
     tolerance: number
 ): Wall2D[] {
-    let walls = [...sourceWalls];
+    const walls = [...sourceWalls];
     let changed = true;
 
     while (changed) {
@@ -372,7 +373,7 @@ function splitWallsAtPointOnLine(
     fallbackLayer: string,
     tolerance: number
 ): Wall2D[] {
-    let walls = [...sourceWalls];
+    const walls = [...sourceWalls];
     let changed = true;
     while (changed) {
         changed = false;

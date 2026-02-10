@@ -1,4 +1,6 @@
-import { createWorker, Worker, RecognizeResult } from "tesseract.js";
+import type { Worker, RecognizeResult } from "tesseract.js";
+import { createWorker } from "tesseract.js";
+
 import type {
   OCRResult,
   OCRPage,
@@ -146,6 +148,12 @@ export class OCRProcessor {
    */
   private parseRecognizeResult(result: RecognizeResult, pageNumber: number): OCRPage {
     const { data } = result;
+    const pageMeta = data as unknown as {
+      imageWidth?: number;
+      imageHeight?: number;
+      width?: number;
+      height?: number;
+    };
 
     const blocks: OCRBlock[] = (data.blocks || []).map((block) => {
       const lines: OCRLine[] = (block.paragraphs || []).flatMap((para) =>
@@ -179,8 +187,8 @@ export class OCRProcessor {
       text: data.text,
       confidence: data.confidence,
       blocks,
-      width: data.imageWidth || 0,
-      height: data.imageHeight || 0,
+      width: pageMeta.imageWidth ?? pageMeta.width ?? 0,
+      height: pageMeta.imageHeight ?? pageMeta.height ?? 0,
     };
   }
 
@@ -206,7 +214,7 @@ export class OCRProcessor {
   /**
    * Detect the type of text block
    */
-  private detectBlockType(block: any): OCRBlock["blockType"] {
+  private detectBlockType(block: { text?: string }): OCRBlock["blockType"] {
     const text = block.text || "";
 
     // Simple heuristics for block type detection
